@@ -13,6 +13,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#include "Button.h"
+
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
 #define buttonsPin A0
@@ -21,6 +23,11 @@
 #define usb1Pin D6
 #define usb2Pin D7
 #define usb3Pin D8
+
+                     //***** Button obj(Pin, AnalogValue, Tolerance) ******//
+Button left(buttonsPin, 700, 100);          
+Button middle(buttonsPin, 500, 100);
+Button right(buttonsPin, 300, 100);
 
 //------------------------------------------------ D I S P L A Y   V A R I A B L E S ------------------------------------------------  
 
@@ -51,6 +58,10 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 int ntpConnectionTimeout = 30;              // How many seconds before giving up connecting to the NTP server   
 
+//------------------------------------------------ G E N E R A L   V A R I A B L E S ------------------------------------------------
+
+bool ledBarState = 0;
+
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
 void setup(){
@@ -77,8 +88,22 @@ void setup(){
 void loop() 
 {
   displayTime(now());                                    // Display the time
+
+  if(left.buttonIsPressed())                             // Pressing the left button toggles the led bar on
+  {
+    if(ledBarState == 0) 
+    {
+      digitalWrite(ledBarPin, HIGH);
+      ledBarState = 1;
+    }
+    else
+    {
+      digitalWrite(ledBarPin, LOW);
+      ledBarState = 0;
+    }
+  }
   
-  if (hour(now()) == nextSyncHour)                       // If the local clock needs to be synced
+  if(hour(now()) == nextSyncHour)                        // If the local clock needs to be synced
   {
     syncTime();                                          // Sync the local time to the NTP server
 
