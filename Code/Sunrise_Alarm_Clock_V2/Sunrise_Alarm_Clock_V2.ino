@@ -1,3 +1,8 @@
+//-----------------------------------------------------------------------------------------------------------------------------------
+// Sunrise Alarm Clock V2
+// Sean Price
+//-----------------------------------------------------------------------------------------------------------------------------------
+
 #include <TimeLib.h>
 #include <NTPClient.h>
 #include <ESP8266WiFi.h>
@@ -20,7 +25,7 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // I
 //------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
 
 const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
-const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
+const char *password = "YOUR_WIFI_PASSWORD";      // REPLACE WITH YOUR WIFI PASSWORD
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
@@ -34,6 +39,8 @@ int hrsBetweenSync = 12;                    // How often the clock needs to be s
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+
+int ntpConnectionTimeout = 30;              // How many seconds before giving up connecting to the NTP server   
 
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
@@ -68,38 +75,48 @@ void loop()
 
 void syncTime()
 {
-  WiFi.mode(WIFI_STA);                            // Turn the WiFi on  
+  WiFi.mode(WIFI_STA);                             // Turn the WiFi on  
   WiFi.begin(ssid, password);                    
 
-  display.clearDisplay();                         // Clear the Display
+  display.clearDisplay();                          // Clear the Display
   display.setCursor(0,0);
-  display.println("Connecting");                  // Show that the device is connecting to the WiFi
+  display.println("Connecting");                   // Show that the device is connecting to the WiFi
   display.display();
 
-  display.setCursor(0,16);
 
-
-  while ( WiFi.status() != WL_CONNECTED ) {       // Until the WiFi Connects
-    display.print(".");                           // Put dots on the screen to show it hasn't frozen
+  for ( int sec = 0; (WiFi.status() != WL_CONNECTED) && (sec < ntpConnectionTimeout); sec++)  // Until the WiFi Connects or times out
+  {  
+    display.print(".");                            // Put dots on the screen to show it hasn't frozen
     display.display();
-    delay ( 500 );
+    delay ( 1000 );
   }
 
-  display.clearDisplay();                          
+  display.clearDisplay();                           // Clear the Display 
   display.setCursor(0,0);
-  display.println("Connected");                   // Show that the alarm has connected to the WiFi
-  display.display();
-  delay(1000);
+
+  if(WiFi.status() == WL_CONNECTED)                 // If the WiFi has successfully connected
+  {
+    display.println("Connected");                   // Show that the alarm has connected to the WiFi
+    display.display();
+    delay(2000);
+
+    timeClient.begin();                             // Connect to the NTP Server
+    timeClient.update();                            // Get the time from the NTP Server
+
+    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), timeClient.getDay(),0,0); // Set the local time
+  }
+  else                                              // If the WiFi has failed to connect
+  {
+    display.println("Connection");                  // Show that the alarm has failed to connect to the WiFi
+    display.println("Failed"); 
+    display.display();
+    delay(2000);
+  }
 
   display.clearDisplay(); 
   display.display();
-
-  timeClient.begin();                             // Connect to the NTP Server
-  timeClient.update();                            // Get the time from the NTP Server
-
-  setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), timeClient.getDay(),0,0); // Set the local time
-
-  WiFi.mode(WIFI_OFF);                            // Turn off the WiFi
+    
+  WiFi.mode(WIFI_OFF);                              // Turn off the WiFi
 
 }
 
@@ -107,7 +124,7 @@ void syncTime()
 
 void calcNextSync()
 {
-  nextSyncHour = hour(now()) + hrsBetweenSync;    // Add to the current hour to find when the clock next needs to sync
+  nextSyncHour = hour(now()) + hrsBetweenSync;       // Add to the current hour to find when the clock next needs to sync
 
   while(nextSyncHour >= 24)                       
   {
