@@ -25,13 +25,13 @@ Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // I
 //------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
 
 const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
-const char *password = "YOUR_WIFI_PASSWORD";      // REPLACE WITH YOUR WIFI PASSWORD
+const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
 const long utcOffsetInSeconds = 3600;       // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
 
-char daysOfTheWeek[7][12] = {"Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"};
+char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 int nextSyncHour = 0;                       // Variable to store the next hour when the clock needs to be synced
 int hrsBetweenSync = 12;                    // How often the clock needs to be synced (hours) 
@@ -75,20 +75,20 @@ void loop()
 
 void syncTime()
 {
-  WiFi.mode(WIFI_STA);                             // Turn the WiFi on  
+  WiFi.mode(WIFI_STA);                              // Turn the WiFi on  
   WiFi.begin(ssid, password);                    
 
-  display.clearDisplay();                          // Clear the Display
+  display.clearDisplay();                           // Clear the Display
   display.setCursor(0,0);
-  display.println("Connecting");                   // Show that the device is connecting to the WiFi
+  display.println("Connecting");                    // Show that the device is connecting to the WiFi
   display.display();
 
 
   for ( int sec = 0; (WiFi.status() != WL_CONNECTED) && (sec < ntpConnectionTimeout); sec++)  // Until the WiFi Connects or times out
   {  
-    display.print(".");                            // Put dots on the screen to show it hasn't frozen
+    display.print(".");                             // Put dots on the screen to show it hasn't frozen
     display.display();
-    delay ( 1000 );
+    delay (1000);
   }
 
   display.clearDisplay();                           // Clear the Display 
@@ -103,7 +103,7 @@ void syncTime()
     timeClient.begin();                             // Connect to the NTP Server
     timeClient.update();                            // Get the time from the NTP Server
 
-    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), timeClient.getDay(),0,0); // Set the local time
+    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), (timeClient.getDay() -1),0,0); // Set the local time
   }
   else                                              // If the WiFi has failed to connect
   {
