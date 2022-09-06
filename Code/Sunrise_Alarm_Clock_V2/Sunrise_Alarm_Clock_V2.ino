@@ -13,6 +13,15 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+//----------------------------------------------------------- P I N O U T -----------------------------------------------------------
+
+#define buttonsPin A0
+#define ledBarPin D0
+#define buzzerPin D5
+#define usb1Pin D6
+#define usb2Pin D7
+#define usb3Pin D8
+
 //------------------------------------------------ D I S P L A Y   V A R I A B L E S ------------------------------------------------  
 
 #define SCREEN_WIDTH 128                                                    // OLED display width, in pixels
@@ -46,6 +55,12 @@ int ntpConnectionTimeout = 30;              // How many seconds before giving up
 
 void setup(){
   Serial.begin(115200);
+
+  pinMode(ledBarPin, OUTPUT);
+  pinMode(buzzerPin, OUTPUT);
+  pinMode(usb1Pin, OUTPUT);
+  pinMode(usb2Pin, OUTPUT);
+  pinMode(usb3Pin, OUTPUT);
   
   display.begin(SSD1306_SWITCHCAPVCC, SCREEN_ADDRESS);   // Setup the OLED Display
   display.clearDisplay();                                
