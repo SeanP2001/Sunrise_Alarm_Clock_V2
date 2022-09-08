@@ -14,6 +14,8 @@
 #include <Adafruit_SSD1306.h>
 
 #include "Button.h"
+#include "Menu.h"
+#include "MenuItem.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
@@ -62,6 +64,8 @@ int ntpConnectionTimeout = 30;              // How many seconds before giving up
 
 bool ledBarState = 0;
 
+Menu mainMenu;                                            // Instantiates a menu called mainMenu
+
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
 void setup(){
@@ -81,6 +85,8 @@ void setup(){
   
   syncTime();                                            // Sync the local time to the NTP server
   calcNextSync();                                        // Calculate when the clock will next need to be synced
+
+  buildMenu(mainMenu);                                   // build the mainMenu
 }
 
 //------------------------------------------------------------- M A I N -------------------------------------------------------------
@@ -89,7 +95,7 @@ void loop()
 {
   displayTime(now());                                    // Display the time
 
-  if(left.buttonIsPressed())                             // Pressing the left button toggles the led bar on
+  if(left.buttonIsPressed())                             // Pressing the left button toggles the led bar on or off
   {
     if(ledBarState == 0) 
     {
@@ -101,6 +107,44 @@ void loop()
       digitalWrite(ledBarPin, LOW);
       ledBarState = 0;
     }
+  }
+
+  if(right.buttonIsPressed())                             // Pressing the right button opens the menu
+  {
+    display.clearDisplay();                                
+    display.display();
+    display.setCursor(0,0);
+    display.print("Main Menu");
+    display.display();      
+    delay(1000);                       
+    mainMenu.open(); 
+  }
+
+  while(mainMenu.isOpen)                                  // When the menu is open
+  {
+    if(left.buttonIsPressed())                            // Pressing the left button moves the cursor to the previous item
+    {
+      mainMenu.moveToPreviousItem();
+      mainMenu.displayMenu();
+    }
+    
+    if(middle.buttonIsPressed())                          // Pressing the middle button selects the item highlighted by the cursor
+    {
+      mainMenu.selectItem();
+      
+      if(mainMenu.isOpen)
+      {
+        mainMenu.displayMenu();
+      }      
+    }
+
+    if(right.buttonIsPressed())                           // Pressing the right button moves the cursor to the next item  
+    {
+      mainMenu.moveToNextItem();
+      mainMenu.displayMenu();
+    }
+
+    delay(100);
   }
   
   if(hour(now()) == nextSyncHour)                        // If the local clock needs to be synced
@@ -176,7 +220,8 @@ void calcNextSync()
 
 void displayTime(time_t t)
 {
-  display.clearDisplay();  
+  display.clearDisplay(); 
+  display.setTextSize(2); 
   display.setCursor(0,16);
 
   display.println(daysOfTheWeek[day(t)]);           
@@ -204,4 +249,133 @@ void displayTime(time_t t)
   display.println(second(t));
 
   display.display();
+}
+
+//------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
+/*
+  The following function will build this menu:
+
+  1. Alarm
+    1.1. Light Bar
+      1.1.1. On Time
+      1.1.2. Blink Time
+    1.2. Buzzer
+      1.2.1. On Time
+    1.3. Turn Off Method
+    
+  2. USB Ports
+    2.1. USB 1
+      2.1.1. On Time
+      2.1.2. Off Time
+    2.2. USB 2
+      2.2.1. On Time
+      2.2.2. Off Time
+    2.3. USB 3
+      2.3.1. On Time
+      2.3.2. Off Time
+
+  3. Time
+    3.1. Time Offset (hrs)
+    3.2. Hours Between Syncs
+    3.3. Sync Time Now
+*/
+
+
+
+void buildMenu(Menu menu)
+{
+  MenuItem* currentItem = menu.firstItem;                               // Create a pointer which points to the first item on the menu,
+
+  currentItem->addNewItem("Alarm", NULL);                               // and add the next item with the name "Alarm" (This will link to a sub-menu so the functionID is NULL).
+  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Alarm",
+  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Alarm" item,
+  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu.
+
+  currentItem->addNewItem("Light Bar", NULL);                           // In the new sub-menu, add an item with the name "Light Bar" (Again this will link to a sub-menu so the functionID is NULL).
+  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Light Bar"
+  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Light Bar" item,
+  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu. 
+
+  currentItem->addNewItem("On Time", LIGHT_BAR_ON_TIME);                // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
+  currentItem = currentItem->nextItem;                                  // Point to the newly created item "On Time".
+
+  currentItem->addNewItem("Blink Time", LIGHT_BAR_OFF_TIME);            // Add a new item with the name "Blink Time" (see "MenuItem.h" for functionID enum).
+
+  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Light Bar" item).
+
+  currentItem->addNewItem("Buzzer", NULL);                              // Add an item with the name "Buzzer" (Again this will link to a sub-menu so the functionID is NULL).
+  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Buzzer",
+  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Buzzer" item,
+  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu.
+ 
+  currentItem->addNewItem("On Time", BUZZER_ON_TIME);                   // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
+
+  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Buzzer" item).
+
+  currentItem->addNewItem("Turn Off Method", TURN_OFF_METHOD);          // Add a new item with the name "Turn Off Method" (see "MenuItem.h" for functionID enum).
+
+  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Alarm" item).
+
+  currentItem->addNewItem("USB Ports", NULL);
+  currentItem = currentItem->nextItem;
+  currentItem->addNewSubMenu();
+  currentItem = currentItem->subMenu;
+
+  currentItem->addNewItem("USB 1", NULL);
+  currentItem = currentItem->nextItem;
+  currentItem->addNewSubMenu();
+  currentItem = currentItem->subMenu;
+
+  currentItem->addNewItem("On Time", USB_1_ON_TIME);
+  
+  currentItem = currentItem->nextItem;
+  
+  currentItem->addNewItem("Off Time", USB_1_OFF_TIME);
+
+  currentItem = currentItem->previousMenu;
+
+  currentItem->addNewItem("USB 2", NULL);
+  currentItem = currentItem->nextItem;
+  currentItem->addNewSubMenu();
+  currentItem = currentItem->subMenu;
+
+  currentItem->addNewItem("On Time", USB_2_ON_TIME);
+  
+  currentItem = currentItem->nextItem;
+  
+  currentItem->addNewItem("Off Time", USB_2_OFF_TIME);
+
+  currentItem = currentItem->previousMenu;
+
+  currentItem->addNewItem("USB 3", NULL);
+  currentItem = currentItem->nextItem;
+  currentItem->addNewSubMenu();
+  currentItem = currentItem->subMenu;
+
+  currentItem->addNewItem("On Time", USB_3_ON_TIME);
+  
+  currentItem = currentItem->nextItem;
+  
+  currentItem->addNewItem("Off Time", USB_3_OFF_TIME);
+
+  currentItem = currentItem->previousMenu;
+
+  currentItem = currentItem->previousMenu;
+
+  currentItem->addNewItem("Time", NULL);
+  currentItem = currentItem->nextItem;
+  currentItem->addNewSubMenu();
+  currentItem = currentItem->subMenu;
+
+  currentItem->addNewItem("Time Offset (hrs)", TIME_OFFSET);
+
+  currentItem = currentItem->nextItem;
+
+  currentItem->addNewItem("Hours Between Syncs", HOURS_BETWEEN_SYNCS);
+
+  currentItem = currentItem->nextItem;
+
+  currentItem->addNewItem("Sync Time Now", SYNC_TIME_NOW);
+
+  free(currentItem);                                                    // Delete the currentItem pointer (no longer needed).
 }
