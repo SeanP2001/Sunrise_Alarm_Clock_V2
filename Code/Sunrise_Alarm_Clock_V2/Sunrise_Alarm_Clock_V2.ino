@@ -20,7 +20,7 @@
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
 #define buttonsPin A0
-#define ledBarPin D0
+#define lightBarPin D0
 #define buzzerPin D5
 #define usb1Pin D6
 #define usb2Pin D7
@@ -62,17 +62,17 @@ int ntpConnectionTimeout = 30;              // How many seconds before giving up
 
 //------------------------------------------------ G E N E R A L   V A R I A B L E S ------------------------------------------------
 
-bool ledBarState = 0;
-
 Menu mainMenu;                                            // Instantiates a menu called mainMenu
 
 //----------------------------------------------- S E T T I N G S   V A R I A B L E S -----------------------------------------------
 
 int lightBarOnTime = 0;
 int lightBarOffTime = 0;
+bool lightBarState = 0;
 
 int buzzerOnTime = 0;
 int buzzerOffTime = 0;
+bool buzzerEnabled = true;
 
 int usb1OnTime = 0;
 int usb1OffTime = 0;
@@ -90,7 +90,7 @@ int usb3OffTime = 0;
 void setup(){
   Serial.begin(115200);
 
-  pinMode(ledBarPin, OUTPUT);
+  pinMode(lightBarPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
   pinMode(usb1Pin, OUTPUT);
   pinMode(usb2Pin, OUTPUT);
@@ -114,21 +114,33 @@ void loop()
 {
   displayTime(now());                                    // Display the time
 
-  if(left.buttonIsPressed())                             // Pressing the left button toggles the led bar on or off
+  if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
   {
-    if(ledBarState == 0) 
+    if(lightBarState == 0) 
     {
-      digitalWrite(ledBarPin, HIGH);
-      ledBarState = 1;
+      digitalWrite(lightBarPin, HIGH);
+      lightBarState = 1;
     }
     else
     {
-      digitalWrite(ledBarPin, LOW);
-      ledBarState = 0;
+      digitalWrite(lightBarPin, LOW);
+      lightBarState = 0;
     }
   }
 
-  if(right.buttonIsPressed())                             // Pressing the right button opens the menu
+  if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
+  {
+    if(!buzzerEnabled) 
+    {
+      buzzerEnabled = true;
+    }
+    else
+    {
+      buzzerEnabled = false;
+    }
+  }
+
+  if(right.buttonIsPressed())                            // Pressing the right button opens the menu
   {
     display.clearDisplay();                                
     display.display();
@@ -139,15 +151,15 @@ void loop()
     mainMenu.open(); 
   }
 
-  while(mainMenu.isOpen)                                  // When the menu is open
+  while(mainMenu.isOpen)                                 // When the menu is open
   {
-    if(left.buttonIsPressed())                            // Pressing the left button moves the cursor to the previous item
+    if(left.buttonIsPressed())                           // Pressing the left button moves the cursor to the previous item
     {
       mainMenu.moveToPreviousItem();
       mainMenu.displayMenu();
     }
     
-    if(middle.buttonIsPressed())                          // Pressing the middle button selects the item highlighted by the cursor
+    if(middle.buttonIsPressed())                         // Pressing the middle button selects the item highlighted by the cursor
     {
       int selectedSetting = mainMenu.selectItem();
 
@@ -162,7 +174,7 @@ void loop()
       }      
     }
 
-    if(right.buttonIsPressed())                           // Pressing the right button moves the cursor to the next item  
+    if(right.buttonIsPressed())                          // Pressing the right button moves the cursor to the next item  
     {
       mainMenu.moveToNextItem();
       mainMenu.displayMenu();
@@ -176,6 +188,58 @@ void loop()
     syncTime();                                          // Sync the local time to the NTP server
 
     calcNextSync();                                      // and calculate when the clock will next need to be synced
+  }
+
+  if(hour(now()) >= lightBarOnTime && hour(now()) < lightBarOffTime)    // Turn on the light bar when it is scheduled                    
+  {
+    digitalWrite(lightBarPin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(lightBarPin, LOW);
+  }
+
+  if(hour(now()) >= buzzerOnTime && hour(now()) < buzzerOffTime)        // Sound the audio alarm when it is scheduled                
+  {
+    if(buzzerEnabled)                                                   // provided that it is enabled
+    {
+      tone(buzzerPin, 2000);
+      delay(1000);
+      noTone(buzzerPin);
+      delay(1000);                                      
+    }
+  }
+  else
+  {
+    noTone(buzzerPin);
+    buzzerEnabled = true;
+  }
+
+  if(hour(now()) >= usb1OnTime && hour(now()) < usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
+  {
+    digitalWrite(usb1Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb1Pin, LOW);
+  }
+
+  if(hour(now()) >= usb2OnTime && hour(now()) < usb2OffTime)            // Turn on USB port 2 when it is scheduled                     
+  {
+    digitalWrite(usb2Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb2Pin, LOW);
+  }
+
+  if(hour(now()) >= usb3OnTime && hour(now()) < usb3OffTime)            // Turn on USB port 3 when it is scheduled                     
+  {
+    digitalWrite(usb3Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb3Pin, LOW);
   }
 }
 
