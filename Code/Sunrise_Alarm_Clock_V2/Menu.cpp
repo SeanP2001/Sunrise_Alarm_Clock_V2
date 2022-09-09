@@ -110,6 +110,9 @@ int Menu::selectItem()
     }
     display.print(currentItem->itemName); 
     display.display();
+
+    Serial.println(currentItem->itemName);
+    Serial.println(currentItem->functionID);
   }
 
   return currentItem->functionID;                            // return the function ID of the current item

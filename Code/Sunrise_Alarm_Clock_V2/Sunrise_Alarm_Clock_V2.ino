@@ -47,7 +47,7 @@ const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWO
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
-const long utcOffsetInSeconds = 3600;       // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
+long utcOffsetInSeconds = 3600;             // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
 
 char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
@@ -65,6 +65,25 @@ int ntpConnectionTimeout = 30;              // How many seconds before giving up
 bool ledBarState = 0;
 
 Menu mainMenu;                                            // Instantiates a menu called mainMenu
+
+//----------------------------------------------- S E T T I N G S   V A R I A B L E S -----------------------------------------------
+
+int lightBarOnTime = 0;
+int lightBarOffTime = 0;
+
+int buzzerOnTime = 0;
+int buzzerOffTime = 0;
+
+int usb1OnTime = 0;
+int usb1OffTime = 0;
+
+int usb2OnTime = 0;
+int usb2OffTime = 0;
+
+int usb3OnTime = 0;
+int usb3OffTime = 0;
+
+
 
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
@@ -260,40 +279,281 @@ void displayTime(time_t t)
 
 void adjustSetting(int functionID)
 {
-  delay(1000);
+  delay(500);
   
-  while(!middle.buttonIsPressed())
+  display.setTextSize(2); 
+  display.setTextColor(WHITE, BLACK);
+  
+  
+  while(!middle.buttonIsPressed())                              // pressing the middle button exits back to the menu (confirming setting)
   {
+    display.setCursor(0,16);
+    
     switch (functionID)
     {
       case LIGHT_BAR_ON_TIME:
-        break;
-      case LIGHT_BAR_OFF_TIME:
-        break;
-      case BUZZER_ON_TIME:
-        break;
-      case TURN_OFF_METHOD:
-        break;
-      case USB_1_ON_TIME:
-        break;
-      case USB_1_OFF_TIME:
-        break;
-      case USB_2_ON_TIME:
-        break;
-      case USB_2_OFF_TIME:
-        break;
-      case USB_3_ON_TIME:
-        break;
-      case USB_3_OFF_TIME:
-        break;
-      case TIME_OFFSET:
-        break;
-      case HOURS_BETWEEN_SYNCS:
-        break;
-      case SYNC_TIME_NOW:
-        break;
-    }
+        if (lightBarOnTime < 10)                                // display the on time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(lightBarOnTime);
+        display.print(":00");
 
+        if(left.buttonIsPressed() && lightBarOnTime >= 0)       // press the left button to decrement the on time (down to 00:00)
+        {
+          lightBarOnTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && lightBarOnTime < 24)      // press the right button to increment the on time (up to 23:00)
+        {
+          lightBarOnTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case LIGHT_BAR_OFF_TIME:
+        if (lightBarOffTime < 10)                               // display the off time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(lightBarOffTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && lightBarOffTime >= 0)      // press the left button to decrement the off time (down to 00:00)
+        {
+          lightBarOffTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && lightBarOffTime < 24)     // press the right button to increment the off time (up to 23:00)
+        {
+          lightBarOffTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case BUZZER_ON_TIME:
+        if (buzzerOnTime < 10)                                  // display the on time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(buzzerOnTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && buzzerOnTime >= 0)         // press the left button to decrement the on time (down to 00:00)
+        {
+          buzzerOnTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && buzzerOnTime < 24)        // press the right button to increment the on time (up to 23:00)
+        {
+          buzzerOnTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+
+      case BUZZER_OFF_TIME:
+        if (buzzerOffTime < 10)                                 // display the off time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(buzzerOffTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && buzzerOffTime >= 0)        // press the left button to decrement the off time (down to 00:00)
+        {
+          buzzerOffTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && buzzerOffTime < 24)       // press the right button to increment the off time (up to 23:00)
+        {
+          buzzerOffTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_1_ON_TIME:
+        if (usb1OnTime < 10)                                    // display the on time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb1OnTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb1OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        {
+          usb1OnTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb1OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        {
+          usb1OnTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_1_OFF_TIME:
+        if (usb1OffTime < 10)                                   // display the off time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb1OffTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb1OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        {
+          usb1OffTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb1OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        {
+          usb1OffTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_2_ON_TIME:
+        if (usb2OnTime < 10)                                    // display the on time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb2OnTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb2OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        {
+          usb2OnTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb2OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        {
+          usb2OnTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_2_OFF_TIME:
+        if (usb2OffTime < 10)                                   // display the off time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb2OffTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb2OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        {
+          usb2OffTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb2OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        {
+          usb2OffTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_3_ON_TIME:
+        if (usb3OnTime < 10)                                    // display the on time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb3OnTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb3OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        {
+          usb3OnTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb3OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        {
+          usb3OnTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case USB_3_OFF_TIME:
+        if (usb3OffTime < 10)                                   // display the off time in the format HH:00
+        {
+          display.print("0");
+        }
+        display.print(usb3OffTime);
+        display.print(":00");
+
+        if(left.buttonIsPressed() && usb3OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        {
+          usb3OffTime--;
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && usb3OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        {
+          usb3OffTime++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case TIME_OFFSET:
+        display.print(utcOffsetInSeconds/3600);                 // print the number of hours offset from UTC
+        display.print(" Hours");
+
+        if(left.buttonIsPressed() && hrsBetweenSync >= -12)     // press the left button to decrement the offset time (down to -12)
+        {
+          utcOffsetInSeconds = utcOffsetInSeconds - 3600; 
+          display.setCursor(0,16);
+          display.print("           ");
+        } 
+        if(right.buttonIsPressed() && hrsBetweenSync <= 12)     // press the right button to increment the offset time (up to +12)
+        {
+          utcOffsetInSeconds = utcOffsetInSeconds + 3600; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }
+        break;
+        
+      case HOURS_BETWEEN_SYNCS:      
+        display.print(hrsBetweenSync);                          // print the number of hours between syncs
+        display.print(" Hours");
+
+        if(left.buttonIsPressed() && hrsBetweenSync > 0)        // press the left button to decrement the number of hours (down to 1) 
+        {
+          hrsBetweenSync--; 
+          display.setCursor(0,16);
+          display.print("           ");        
+        } 
+        if(right.buttonIsPressed() && hrsBetweenSync <= 24)     // press the right button to increment the number of hours (up to 24)
+        {
+          hrsBetweenSync++; 
+          display.setCursor(0,16);
+          display.print("           ");
+        }               
+        break;  
+             
+      case SYNC_TIME_NOW:
+        syncTime();                                             // Sync the local time to the NTP server
+        calcNextSync();                                         // Calculate when the clock will next need to be synced
+        return;
+    }
+    
+    display.display();
     delay(100);
   }
   
@@ -305,10 +565,10 @@ void adjustSetting(int functionID)
   1. Alarm
     1.1. Light Bar
       1.1.1. On Time
-      1.1.2. Blink Time
+      1.1.2. Off Time
     1.2. Buzzer
       1.2.1. On Time
-    1.3. Turn Off Method
+      1.2.2. Off Time
     
   2. USB Ports
     2.1. USB 1
@@ -346,7 +606,7 @@ void buildMenu(Menu menu)
   currentItem->addNewItem("On Time", LIGHT_BAR_ON_TIME);                // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
   currentItem = currentItem->nextItem;                                  // Point to the newly created item "On Time".
 
-  currentItem->addNewItem("Blink Time", LIGHT_BAR_OFF_TIME);            // Add a new item with the name "Blink Time" (see "MenuItem.h" for functionID enum).
+  currentItem->addNewItem("Off Time", LIGHT_BAR_OFF_TIME);              // Add a new item with the name "Off Time" (see "MenuItem.h" for functionID enum).
 
   currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Light Bar" item).
 
@@ -356,10 +616,11 @@ void buildMenu(Menu menu)
   currentItem = currentItem->subMenu;                                   // and point to the new sub-menu.
  
   currentItem->addNewItem("On Time", BUZZER_ON_TIME);                   // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
+  currentItem = currentItem->nextItem;                                  // Point to the newly created item "On Time"
+
+  currentItem->addNewItem("Off Time", BUZZER_OFF_TIME);                 // Add a new item with the name "Off Time" (see "MenuItem.h" for functionID enum).
 
   currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Buzzer" item).
-
-  currentItem->addNewItem("Turn Off Method", TURN_OFF_METHOD);          // Add a new item with the name "Turn Off Method" (see "MenuItem.h" for functionID enum).
 
   currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Alarm" item).
 
