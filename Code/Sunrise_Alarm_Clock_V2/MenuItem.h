@@ -40,8 +40,6 @@ public:
 
   void printItemName();
 
-  void executeFunction();
-
   void addNewItem(String _itemName, int _functionID);
 
   void addNewSubMenu();

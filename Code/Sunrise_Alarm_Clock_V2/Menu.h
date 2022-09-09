@@ -30,7 +30,7 @@ public:
   
   void moveToNextItem();
 
-  void selectItem();
+  int selectItem();
 };
 
 #endif // _MENU_H_

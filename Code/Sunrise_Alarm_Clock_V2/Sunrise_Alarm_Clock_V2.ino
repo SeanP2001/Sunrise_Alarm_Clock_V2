@@ -130,8 +130,13 @@ void loop()
     
     if(middle.buttonIsPressed())                          // Pressing the middle button selects the item highlighted by the cursor
     {
-      mainMenu.selectItem();
-      
+      int selectedSetting = mainMenu.selectItem();
+
+      if(selectedSetting > 1 && selectedSetting != NULL)
+      {
+        adjustSetting(selectedSetting);
+      }
+    
       if(mainMenu.isOpen)
       {
         mainMenu.displayMenu();
@@ -251,6 +256,48 @@ void displayTime(time_t t)
   display.display();
 }
 
+//--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
+
+void adjustSetting(int functionID)
+{
+  delay(1000);
+  
+  while(!middle.buttonIsPressed())
+  {
+    switch (functionID)
+    {
+      case LIGHT_BAR_ON_TIME:
+        break;
+      case LIGHT_BAR_OFF_TIME:
+        break;
+      case BUZZER_ON_TIME:
+        break;
+      case TURN_OFF_METHOD:
+        break;
+      case USB_1_ON_TIME:
+        break;
+      case USB_1_OFF_TIME:
+        break;
+      case USB_2_ON_TIME:
+        break;
+      case USB_2_OFF_TIME:
+        break;
+      case USB_3_ON_TIME:
+        break;
+      case USB_3_OFF_TIME:
+        break;
+      case TIME_OFFSET:
+        break;
+      case HOURS_BETWEEN_SYNCS:
+        break;
+      case SYNC_TIME_NOW:
+        break;
+    }
+
+    delay(100);
+  }
+  
+}
 //------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
 /*
   The following function will build this menu:

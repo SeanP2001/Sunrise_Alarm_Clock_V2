@@ -1,6 +1,8 @@
 
 #include "MenuItem.h"
 
+//-------------------------------------------- M E N U   I T E M   C O N S T R U C T O R --------------------------------------------
+
 MenuItem::MenuItem(String _itemName, int _functionID, MenuItem* _previousMenu, MenuItem* _previousItem)
 {
   this->itemName = _itemName;
@@ -12,63 +14,21 @@ MenuItem::MenuItem(String _itemName, int _functionID, MenuItem* _previousMenu, M
   nextItem = NULL;
 }
 
+//-------------------------------------------------- P R I N T   I T E M   N A M E --------------------------------------------------
+
 void MenuItem::printItemName()
 {
   display.print(itemName);
 }
 
-void MenuItem::executeFunction()
-{
-  display.clearDisplay(); 
-  display.display();
-  display.setTextSize(1);
-  display.setTextColor(WHITE);
-  display.setCursor(0,0); 
-  if(previousMenu != NULL) 
-  {
-    display.print(previousMenu->itemName);
-    display.print(">");
-  }
-  display.print(itemName); 
-  display.display();
-  
-  switch (functionID)
-  {
-    case LIGHT_BAR_ON_TIME:
-      break;
-    case LIGHT_BAR_OFF_TIME:
-      break;
-    case BUZZER_ON_TIME:
-      break;
-    case TURN_OFF_METHOD:
-      break;
-    case USB_1_ON_TIME:
-      break;
-    case USB_1_OFF_TIME:
-      break;
-    case USB_2_ON_TIME:
-      break;
-    case USB_2_OFF_TIME:
-      break;
-    case USB_3_ON_TIME:
-      break;
-    case USB_3_OFF_TIME:
-      break;
-    case TIME_OFFSET:
-      break;
-    case HOURS_BETWEEN_SYNCS:
-      break;
-    case SYNC_TIME_NOW:
-      break;
-  }
-
-  delay(3000);
-}
+//----------------------------------------------------- A D D   N E W   I T E M -----------------------------------------------------
 
 void MenuItem::addNewItem(String _itemName, int _functionID)
 {
   this->nextItem = new MenuItem(_itemName, _functionID, this->previousMenu, this);
 }
+
+//------------------------------------------------- A D D   N E W   S U B   M E N U -------------------------------------------------
 
 void MenuItem::addNewSubMenu()
 {

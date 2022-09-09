@@ -1,6 +1,8 @@
 
 #include "Menu.h"
 
+//------------------------------------------------- M E N U   C O N S T R U C T O R -------------------------------------------------
+
 Menu::Menu()
 { 
   this->firstItem = new MenuItem("Exit Menu", 0, NULL, NULL);    
@@ -10,11 +12,15 @@ Menu::Menu()
   isOpen = false;
 }
 
+//------------------------------------------------------------- O P E N -------------------------------------------------------------
+
 void Menu::open()
 {
   isOpen = true;
   displayMenu();
 }
+
+//------------------------------------------------------------ C L O S E ------------------------------------------------------------
 
 void Menu::close()
 {
@@ -23,6 +29,8 @@ void Menu::close()
   display.clearDisplay();                                
   display.display();
 }
+
+//----------------------------------------------------- D I S P L A Y   M E N U -----------------------------------------------------
 
 void Menu::displayMenu()
 {
@@ -52,6 +60,8 @@ void Menu::displayMenu()
   display.display();
 }
 
+//-------------------------------------------- M O V E   T O   P R E V I O U S   I T E M --------------------------------------------
+
 void Menu::moveToPreviousItem()
 {
   if(currentItem->previousItem != NULL)
@@ -59,6 +69,8 @@ void Menu::moveToPreviousItem()
     currentItem = currentItem->previousItem;
   }  
 }
+
+//------------------------------------------------ M O V E   T O   N E X T   I T E M ------------------------------------------------
   
 void Menu::moveToNextItem()
 {
@@ -68,22 +80,37 @@ void Menu::moveToNextItem()
   }
 }
 
-void Menu::selectItem()
+//------------------------------------------------------ S E L E C T   I T E M ------------------------------------------------------
+
+int Menu::selectItem()
 {
-  if(currentItem->subMenu != NULL)
+  if(currentItem->subMenu != NULL)                           // if the selected item has a sub-menu
   {
-    currentItem = currentItem->subMenu;
+    currentItem = currentItem->subMenu;                      // navigate to it
   }
-  else if(currentItem->functionID == EXIT)
+  else if(currentItem->functionID == EXIT)                   // if the selected item is to "Exit Menu"
   {
-    close();
-  }
-  else if(currentItem->functionID == BACK)
+    close();                                                 // close the menu and return to the main screen
+  } 
+  else if(currentItem->functionID == BACK)                   // if the selected item is "Back"
   {
-    currentItem = currentItem->previousMenu;
+    currentItem = currentItem->previousMenu;                 // navigate to the previous menu
   }
-  else
+  else                                                       // for all other function IDs
   {
-    currentItem->executeFunction();
+    display.clearDisplay();                                  // Clear the display
+    display.display();
+    display.setTextSize(1);
+    display.setTextColor(WHITE);
+    display.setCursor(0,0); 
+    if(currentItem->previousMenu != NULL)                    // and print "menu>setting" at the top of the display
+    {
+      display.print(currentItem->previousMenu->itemName);
+      display.print(">");
+    }
+    display.print(currentItem->itemName); 
+    display.display();
   }
+
+  return currentItem->functionID;                            // return the function ID of the current item
 }
