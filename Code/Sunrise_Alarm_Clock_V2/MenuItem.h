@@ -22,7 +22,8 @@ enum functionIDs {
   USB_3_OFF_TIME,
   TIME_OFFSET,
   HOURS_BETWEEN_SYNCS,
-  SYNC_TIME_NOW
+  SYNC_TIME_NOW,
+  SAVE
 };
 
 class MenuItem{

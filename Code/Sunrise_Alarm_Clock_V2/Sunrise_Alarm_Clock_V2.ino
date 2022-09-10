@@ -13,6 +13,8 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
+#include <EEPROM.h>
+
 #include "Button.h"
 #include "Menu.h"
 #include "MenuItem.h"
@@ -43,10 +45,10 @@ Button right(buttonsPin, 300, 100);
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // Instantiate OLED Display
 
 bool screenIsOn = true;                                                     // turns the display on or off
-int screenTimeoutStart = 22;                                                // The screen will be able to timeout from 22:00
-int screenTimeoutEnd = 7;                                                   // to 07:00
-int screenTimeoutSec = 0;                                                   // variable to store the second when the screen will time out 
-int screenTimeoutMin = 0;                                                   // variable to store the minute when the screen will time out 
+uint8_t screenTimeoutStart = 22;                                            // The screen will be able to timeout from 22:00
+uint8_t screenTimeoutEnd = 7;                                               // to 07:00
+uint8_t screenTimeoutSec = 0;                                               // variable to store the second when the screen will time out 
+uint8_t screenTimeoutMin = 0;                                               // variable to store the minute when the screen will time out 
 
 
 //------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
@@ -61,42 +63,47 @@ long utcOffsetInSeconds = 3600;             // BST = (3600 secs) ahead of UTC an
 
 char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
-int nextSyncHour = 0;                       // Variable to store the next hour when the clock needs to be synced
-int hrsBetweenSync = 12;                    // How often the clock needs to be synced (hours) 
+uint8_t nextSyncHour = 0;                   // Variable to store the next hour when the clock needs to be synced
+uint8_t hrsBetweenSync = 12;                // How often the clock needs to be synced (hours) 
 
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
 NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
-int ntpConnectionTimeout = 30;              // How many seconds before giving up connecting to the NTP server   
+uint8_t ntpConnectionTimeout = 30;          // How many seconds before giving up connecting to the NTP server   
 
 
 //----------------------------------------------- S E T T I N G S   V A R I A B L E S -----------------------------------------------
 
 Menu mainMenu;                                            // Instantiates a menu called mainMenu
 
-int lightBarOnTime = 0;
-int lightBarOffTime = 0;
+uint8_t lightBarOnTime = 0;
+uint8_t lightBarOffTime = 0;
 bool lightBarState = 0;
 
-int buzzerOnTime = 0;
-int buzzerOffTime = 0;
+uint8_t buzzerOnTime = 0;
+uint8_t buzzerOffTime = 0;
 bool buzzerEnabled = true;
 
-int usb1OnTime = 0;
-int usb1OffTime = 0;
+uint8_t usb1OnTime = 0;
+uint8_t usb1OffTime = 0;
 
-int usb2OnTime = 0;
-int usb2OffTime = 0;
+uint8_t usb2OnTime = 0;
+uint8_t usb2OffTime = 0;
 
-int usb3OnTime = 0;
-int usb3OffTime = 0;
+uint8_t usb3OnTime = 0;
+uint8_t usb3OffTime = 0;
 
+uint8_t address = 0;
 
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
 void setup(){
   Serial.begin(115200);
+
+  EEPROM.begin(512);
+
+  loadSettings();                                        // Load settings from EEPROM
 
   pinMode(lightBarPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
@@ -721,6 +728,23 @@ void adjustSetting(int functionID)
         syncTime();                                             // Sync the local time to the NTP server
         calcNextSync();                                         // Calculate when the clock will next need to be synced
         return;
+
+      case SAVE:
+        display.print("Saving...");
+        display.display();
+        
+        saveSettings();                                         // save the current settings to EEPROM
+        
+        delay(1000);
+        display.clearDisplay();
+        display.setCursor(0,16);
+        display.print("Saved");
+        display.display();
+        delay(1000);
+        
+        display.clearDisplay();
+        display.display();
+        return;
     }
     
     display.display();
@@ -728,6 +752,92 @@ void adjustSetting(int functionID)
   }
 
   display.clearDisplay();                                       // Clear the Display when the user exits the screen
+}
+
+//---------------------------------------------------- S A V E   S E T T I N G S ----------------------------------------------------
+
+void saveSettings()
+{
+  address = 0;
+
+  EEPROM.put(address, lightBarOnTime);
+
+  address = address + sizeof(lightBarOnTime);
+  EEPROM.put(address, lightBarOffTime);
+
+  address = address + sizeof(lightBarOffTime);
+  EEPROM.put(address, buzzerOnTime);
+
+  address = address + sizeof(buzzerOnTime);
+  EEPROM.put(address, buzzerOffTime);
+
+  address = address + sizeof(buzzerOffTime);
+  EEPROM.put(address, usb1OnTime);
+
+  address = address + sizeof(usb1OnTime);
+  EEPROM.put(address, usb1OffTime);
+
+  address = address + sizeof(usb1OffTime);
+  EEPROM.put(address, usb2OnTime);
+
+  address = address + sizeof(usb2OnTime);
+  EEPROM.put(address, usb2OffTime);
+
+  address = address + sizeof(usb2OffTime);
+  EEPROM.put(address, usb3OnTime);
+
+  address = address + sizeof(usb3OnTime);
+  EEPROM.put(address, usb3OffTime);
+
+  address = address + sizeof(usb3OffTime);
+  EEPROM.put(address, utcOffsetInSeconds);
+
+  address = address + sizeof(utcOffsetInSeconds);
+  EEPROM.put(address, hrsBetweenSync);
+
+  EEPROM.commit();
+}
+
+//---------------------------------------------------- L O A D   S E T T I N G S ----------------------------------------------------
+
+void loadSettings()
+{
+  address = 0;
+
+  EEPROM.get(address, lightBarOnTime);
+
+  address = address + sizeof(lightBarOnTime);
+  EEPROM.get(address, lightBarOffTime);
+
+  address = address + sizeof(lightBarOffTime);
+  EEPROM.get(address, buzzerOnTime);
+
+  address = address + sizeof(buzzerOnTime);
+  EEPROM.get(address, buzzerOffTime);
+
+  address = address + sizeof(buzzerOffTime);
+  EEPROM.get(address, usb1OnTime);
+
+  address = address + sizeof(usb1OnTime);
+  EEPROM.get(address, usb1OffTime);
+
+  address = address + sizeof(usb1OffTime);
+  EEPROM.get(address, usb2OnTime);
+
+  address = address + sizeof(usb2OnTime);
+  EEPROM.get(address, usb2OffTime);
+
+  address = address + sizeof(usb2OffTime);
+  EEPROM.get(address, usb3OnTime);
+
+  address = address + sizeof(usb3OnTime);
+  EEPROM.get(address, usb3OffTime);
+
+  address = address + sizeof(usb3OffTime);
+  EEPROM.get(address, utcOffsetInSeconds);
+
+  address = address + sizeof(utcOffsetInSeconds);
+  EEPROM.get(address, hrsBetweenSync);
 }
 
 //-------------------------------------------- M A N A G E   S C R E E N   T I M E O U T --------------------------------------------
@@ -887,6 +997,10 @@ void buildMenu(Menu menu)
   currentItem = currentItem->nextItem;
 
   currentItem->addNewItem("Sync Time Now", SYNC_TIME_NOW);
+
+  currentItem = currentItem->previousMenu;
+
+  currentItem->addNewItem("Save Settings", SAVE);
 
   free(currentItem);                                                    // Delete the currentItem pointer (no longer needed).
 }
