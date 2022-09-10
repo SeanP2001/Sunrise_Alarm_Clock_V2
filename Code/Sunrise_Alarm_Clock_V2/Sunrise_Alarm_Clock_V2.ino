@@ -16,6 +16,7 @@
 #include "Button.h"
 #include "Menu.h"
 #include "MenuItem.h"
+#include "Icons.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
@@ -83,8 +84,6 @@ int usb2OffTime = 0;
 int usb3OnTime = 0;
 int usb3OffTime = 0;
 
-
-
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
 void setup(){
@@ -100,7 +99,7 @@ void setup(){
   display.clearDisplay();                                
   display.display();
   display.setTextSize(2);
-  display.setTextColor(WHITE);
+  display.setTextColor(WHITE, BLACK);
   
   syncTime();                                            // Sync the local time to the NTP server
   calcNextSync();                                        // Calculate when the clock will next need to be synced
@@ -113,6 +112,9 @@ void setup(){
 void loop() 
 {
   displayTime(now());                                    // Display the time
+
+  displayIcons();
+
 
   if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
   {
@@ -144,8 +146,9 @@ void loop()
   {
     display.clearDisplay();                                
     display.display();
-    display.setCursor(0,0);
-    display.print("Main Menu");
+    display.setCursor(0,24);
+    display.println(" Main Menu ");
+    display.drawRect(0, 0, 128, 64, WHITE);    
     display.display();      
     delay(1000);                       
     mainMenu.open(); 
@@ -153,6 +156,8 @@ void loop()
 
   while(mainMenu.isOpen)                                 // When the menu is open
   {
+    displayIcons();
+    
     if(left.buttonIsPressed())                           // Pressing the left button moves the cursor to the previous item
     {
       mainMenu.moveToPreviousItem();
@@ -192,11 +197,13 @@ void loop()
 
   if(hour(now()) >= lightBarOnTime && hour(now()) < lightBarOffTime)    // Turn on the light bar when it is scheduled                    
   {
-    digitalWrite(lightBarPin, HIGH);                                      
+    digitalWrite(lightBarPin, HIGH); 
+    lightBarState = 1;                                     
   }
-  else
+  if(hour(now()) == lightBarOffTime && minute(now()) == 0)                
   {
     digitalWrite(lightBarPin, LOW);
+    lightBarState = 0;
   }
 
   if(hour(now()) >= buzzerOnTime && hour(now()) < buzzerOffTime)        // Sound the audio alarm when it is scheduled                
@@ -212,7 +219,6 @@ void loop()
   else
   {
     noTone(buzzerPin);
-    buzzerEnabled = true;
   }
 
   if(hour(now()) >= usb1OnTime && hour(now()) < usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
@@ -241,6 +247,8 @@ void loop()
   {
     digitalWrite(usb3Pin, LOW);
   }
+
+  delay(100);
 }
 
 //-------------------------------------------------------- S Y N C   T I M E --------------------------------------------------------
@@ -296,7 +304,7 @@ void syncTime()
 
 void calcNextSync()
 {
-  nextSyncHour = hour(now()) + hrsBetweenSync;       // Add to the current hour to find when the clock next needs to sync
+  nextSyncHour = hour(now()) + hrsBetweenSync;      // Add to the current hour to find when the clock next needs to sync
 
   while(nextSyncHour >= 24)                       
   {
@@ -307,12 +315,26 @@ void calcNextSync()
 //----------------------------------------------------- D I S P L A Y   T I M E -----------------------------------------------------
 
 void displayTime(time_t t)
-{
-  display.clearDisplay(); 
+{ 
   display.setTextSize(2); 
-  display.setCursor(0,16);
+  display.setTextColor(WHITE, BLACK);
+  display.setCursor(0,5);
+  display.print("           ");
+
+  switch(day(t))                                   // Centre the text
+  {
+    case 0: display.setCursor(28,5); break;
+    case 1: display.setCursor(22,5); break;
+    case 2: display.setCursor(10,5); break;
+    case 3: display.setCursor(16,5); break;
+    case 4: display.setCursor(28,5); break;
+    case 5: display.setCursor(16,5); break;
+    case 6: display.setCursor(28,5); break;
+  }
 
   display.println(daysOfTheWeek[day(t)]);           
+
+  display.setCursor(16,24);
   
   if (hour(t) < 10)
   {
@@ -339,6 +361,44 @@ void displayTime(time_t t)
   display.display();
 }
 
+//---------------------------------------------------- D I S P L A Y   I C O N S ----------------------------------------------------
+void displayIcons()
+{
+  if(mainMenu.isOpen)
+  {
+    display.drawBitmap(2, 48, upArrowIcon, 16, 16, WHITE);
+    display.drawBitmap(110, 48, downArrowIcon, 16, 16, WHITE);
+  }
+  else
+  {
+    if(lightBarState == 1)
+    {
+      display.drawBitmap(2, 48, lightOnIcon, 16, 16, WHITE);
+    }
+    else
+    {
+      display.setCursor(0,48);
+      display.print("  ");
+      display.drawBitmap(2, 48, lightOffIcon, 16, 16, WHITE);
+    }
+  
+    if(buzzerEnabled)
+    {
+      display.drawBitmap(56, 48, alarmOnIcon, 16, 16, WHITE);
+    }
+    else
+    {
+      display.setCursor(56,48);
+      display.print("  ");
+      display.drawBitmap(56, 48, alarmOffIcon, 16, 16, WHITE);
+    }
+  
+    display.drawBitmap(110, 48, menuIcon, 16, 16, WHITE);
+  }
+    
+  display.display();
+}
+
 //--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
 
 void adjustSetting(int functionID)
@@ -347,6 +407,9 @@ void adjustSetting(int functionID)
   
   display.setTextSize(2); 
   display.setTextColor(WHITE, BLACK);
+
+  display.drawBitmap(2, 48, downArrowIcon, 16, 16, WHITE);
+  display.drawBitmap(110, 48, upArrowIcon, 16, 16, WHITE);
   
   
   while(!middle.buttonIsPressed())                              // pressing the middle button exits back to the menu (confirming setting)
@@ -363,13 +426,13 @@ void adjustSetting(int functionID)
         display.print(lightBarOnTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && lightBarOnTime >= 0)       // press the left button to decrement the on time (down to 00:00)
+        if(left.buttonIsPressed() && lightBarOnTime > 0)        // press the left button to decrement the on time (down to 00:00)
         {
           lightBarOnTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && lightBarOnTime < 24)      // press the right button to increment the on time (up to 23:00)
+        if(right.buttonIsPressed() && lightBarOnTime < 23)      // press the right button to increment the on time (up to 23:00)
         {
           lightBarOnTime++; 
           display.setCursor(0,16);
@@ -385,13 +448,13 @@ void adjustSetting(int functionID)
         display.print(lightBarOffTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && lightBarOffTime >= 0)      // press the left button to decrement the off time (down to 00:00)
+        if(left.buttonIsPressed() && lightBarOffTime > 0)       // press the left button to decrement the off time (down to 00:00)
         {
           lightBarOffTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && lightBarOffTime < 24)     // press the right button to increment the off time (up to 23:00)
+        if(right.buttonIsPressed() && lightBarOffTime < 23)     // press the right button to increment the off time (up to 23:00)
         {
           lightBarOffTime++; 
           display.setCursor(0,16);
@@ -407,13 +470,13 @@ void adjustSetting(int functionID)
         display.print(buzzerOnTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && buzzerOnTime >= 0)         // press the left button to decrement the on time (down to 00:00)
+        if(left.buttonIsPressed() && buzzerOnTime > 0)          // press the left button to decrement the on time (down to 00:00)
         {
           buzzerOnTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && buzzerOnTime < 24)        // press the right button to increment the on time (up to 23:00)
+        if(right.buttonIsPressed() && buzzerOnTime < 23)        // press the right button to increment the on time (up to 23:00)
         {
           buzzerOnTime++; 
           display.setCursor(0,16);
@@ -429,13 +492,13 @@ void adjustSetting(int functionID)
         display.print(buzzerOffTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && buzzerOffTime >= 0)        // press the left button to decrement the off time (down to 00:00)
+        if(left.buttonIsPressed() && buzzerOffTime > 0)         // press the left button to decrement the off time (down to 00:00)
         {
           buzzerOffTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && buzzerOffTime < 24)       // press the right button to increment the off time (up to 23:00)
+        if(right.buttonIsPressed() && buzzerOffTime < 23)       // press the right button to increment the off time (up to 23:00)
         {
           buzzerOffTime++; 
           display.setCursor(0,16);
@@ -451,13 +514,13 @@ void adjustSetting(int functionID)
         display.print(usb1OnTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb1OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        if(left.buttonIsPressed() && usb1OnTime > 0)            // press the left button to decrement the on time (down to 00:00)
         {
           usb1OnTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb1OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        if(right.buttonIsPressed() && usb1OnTime < 23)          // press the right button to increment the on time (up to 23:00)
         {
           usb1OnTime++; 
           display.setCursor(0,16);
@@ -473,13 +536,13 @@ void adjustSetting(int functionID)
         display.print(usb1OffTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb1OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        if(left.buttonIsPressed() && usb1OffTime > 0)           // press the left button to decrement the off time (down to 00:00)
         {
           usb1OffTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb1OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        if(right.buttonIsPressed() && usb1OffTime < 23)         // press the right button to increment the off time (up to 23:00)
         {
           usb1OffTime++; 
           display.setCursor(0,16);
@@ -495,13 +558,13 @@ void adjustSetting(int functionID)
         display.print(usb2OnTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb2OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        if(left.buttonIsPressed() && usb2OnTime > 0)            // press the left button to decrement the on time (down to 00:00)
         {
           usb2OnTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb2OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        if(right.buttonIsPressed() && usb2OnTime < 23)          // press the right button to increment the on time (up to 23:00)
         {
           usb2OnTime++; 
           display.setCursor(0,16);
@@ -517,13 +580,13 @@ void adjustSetting(int functionID)
         display.print(usb2OffTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb2OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        if(left.buttonIsPressed() && usb2OffTime > 0)           // press the left button to decrement the off time (down to 00:00)
         {
           usb2OffTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb2OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        if(right.buttonIsPressed() && usb2OffTime < 23)         // press the right button to increment the off time (up to 23:00)
         {
           usb2OffTime++; 
           display.setCursor(0,16);
@@ -539,13 +602,13 @@ void adjustSetting(int functionID)
         display.print(usb3OnTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb3OnTime >= 0)           // press the left button to decrement the on time (down to 00:00)
+        if(left.buttonIsPressed() && usb3OnTime > 0)            // press the left button to decrement the on time (down to 00:00)
         {
           usb3OnTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb3OnTime < 24)          // press the right button to increment the on time (up to 23:00)
+        if(right.buttonIsPressed() && usb3OnTime < 23)          // press the right button to increment the on time (up to 23:00)
         {
           usb3OnTime++; 
           display.setCursor(0,16);
@@ -561,13 +624,13 @@ void adjustSetting(int functionID)
         display.print(usb3OffTime);
         display.print(":00");
 
-        if(left.buttonIsPressed() && usb3OffTime >= 0)          // press the left button to decrement the off time (down to 00:00)
+        if(left.buttonIsPressed() && usb3OffTime > 0)           // press the left button to decrement the off time (down to 00:00)
         {
           usb3OffTime--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && usb3OffTime < 24)         // press the right button to increment the off time (up to 23:00)
+        if(right.buttonIsPressed() && usb3OffTime < 23)         // press the right button to increment the off time (up to 23:00)
         {
           usb3OffTime++; 
           display.setCursor(0,16);
@@ -579,13 +642,13 @@ void adjustSetting(int functionID)
         display.print(utcOffsetInSeconds/3600);                 // print the number of hours offset from UTC
         display.print(" Hours");
 
-        if(left.buttonIsPressed() && hrsBetweenSync >= -12)     // press the left button to decrement the offset time (down to -12)
+        if(left.buttonIsPressed() && hrsBetweenSync > -12)      // press the left button to decrement the offset time (down to -12)
         {
           utcOffsetInSeconds = utcOffsetInSeconds - 3600; 
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && hrsBetweenSync <= 12)     // press the right button to increment the offset time (up to +12)
+        if(right.buttonIsPressed() && hrsBetweenSync < 12)      // press the right button to increment the offset time (up to +12)
         {
           utcOffsetInSeconds = utcOffsetInSeconds + 3600; 
           display.setCursor(0,16);
@@ -597,13 +660,13 @@ void adjustSetting(int functionID)
         display.print(hrsBetweenSync);                          // print the number of hours between syncs
         display.print(" Hours");
 
-        if(left.buttonIsPressed() && hrsBetweenSync > 0)        // press the left button to decrement the number of hours (down to 1) 
+        if(left.buttonIsPressed() && hrsBetweenSync > 1)        // press the left button to decrement the number of hours (down to 1) 
         {
           hrsBetweenSync--; 
           display.setCursor(0,16);
           display.print("           ");        
         } 
-        if(right.buttonIsPressed() && hrsBetweenSync <= 24)     // press the right button to increment the number of hours (up to 24)
+        if(right.buttonIsPressed() && hrsBetweenSync < 24)      // press the right button to increment the number of hours (up to 24)
         {
           hrsBetweenSync++; 
           display.setCursor(0,16);
@@ -620,8 +683,10 @@ void adjustSetting(int functionID)
     display.display();
     delay(100);
   }
-  
+
+  display.clearDisplay();                                       // Clear the Display
 }
+
 //------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
 /*
   The following function will build this menu:

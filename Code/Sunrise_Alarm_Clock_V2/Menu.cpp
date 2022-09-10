@@ -41,19 +41,19 @@ void Menu::displayMenu()
 
   if(currentItem->previousItem != NULL)            // if there is an menu item before the one currently selected
   {
-    display.setCursor(12,8);                       
+    display.setCursor(12,3);                       
     currentItem->previousItem->printItemName();    // print it above the current item in the menu
   }
 
-  display.setCursor(0,24);
+  display.setCursor(0,19);
   display.print(">");                              // print the cursor
 
-  display.setCursor(12,24);
+  display.setCursor(12,19);
   currentItem->printItemName();
   
   if(currentItem->nextItem != NULL)                // if there is an item after the one currently selected
   {
-    display.setCursor(12,40);
+    display.setCursor(12,35);
     currentItem->nextItem->printItemName();        // print it below the current item in the menu
   }
 
