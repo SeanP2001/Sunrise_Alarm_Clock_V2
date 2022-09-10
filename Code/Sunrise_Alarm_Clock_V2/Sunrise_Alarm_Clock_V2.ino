@@ -32,6 +32,7 @@ Button left(buttonsPin, 700, 100);
 Button middle(buttonsPin, 500, 100);
 Button right(buttonsPin, 300, 100);
 
+
 //------------------------------------------------ D I S P L A Y   V A R I A B L E S ------------------------------------------------  
 
 #define SCREEN_WIDTH 128                                                    // OLED display width, in pixels
@@ -47,10 +48,12 @@ int screenTimeoutEnd = 7;                                                   // t
 int screenTimeoutSec = 0;                                                   // variable to store the second when the screen will time out 
 int screenTimeoutMin = 0;                                                   // variable to store the minute when the screen will time out 
 
+
 //------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
 
 const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
 const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
+
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
@@ -67,11 +70,10 @@ NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
 
 int ntpConnectionTimeout = 30;              // How many seconds before giving up connecting to the NTP server   
 
-//------------------------------------------------ G E N E R A L   V A R I A B L E S ------------------------------------------------
-
-Menu mainMenu;                                            // Instantiates a menu called mainMenu
 
 //----------------------------------------------- S E T T I N G S   V A R I A B L E S -----------------------------------------------
+
+Menu mainMenu;                                            // Instantiates a menu called mainMenu
 
 int lightBarOnTime = 0;
 int lightBarOffTime = 0;
@@ -89,6 +91,7 @@ int usb2OffTime = 0;
 
 int usb3OnTime = 0;
 int usb3OffTime = 0;
+
 
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
@@ -116,50 +119,23 @@ void setup(){
   screenTimeoutSec = second(now());                      // (the screen will only timeout at night)
 }
 
+
 //------------------------------------------------------------- M A I N -------------------------------------------------------------
 
 void loop() 
 {
-  
-  if(hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd)                     // At night (22:00-07:00 by default)
-  {
-    if(minute(now()) == screenTimeoutMin && second(now()) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
-    {     
-      screenIsOn = false;                                                                     // set the screen to turn off
-    }
-    while(!screenIsOn)                                                                        // while the screen is set to be off
-    {
-      display.clearDisplay();                                                                 // make the screen blank                        
-      display.display();
-      
-      if(left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed())       // and wait for any of the buttons to be pressed
-      {
-        screenIsOn = true;                                                                    // when a button is pressed, set the screen to be on
-  
-        screenTimeoutMin = minute(now()) + 1;                                                 // and set it to timeout again in a minute
-        screenTimeoutSec = second(now());
-      }
-      delay(100);
-    }
-  }
-  else                                                                                        // In the day                          
-  {
-    screenIsOn = true;                                                                        // the screen is always on
-  }
 
-  if(screenIsOn)                                         // if the screen is on
+  manageScreenTimeout();                                 // Manage the screen timeout depending on the time of day
+
+  if(screenIsOn)                                         // If the screen is on
   {
-    displayTime(now());                                  // Display the time
+    displayTime(now());                                  // display the time
     displayIcons();                                      // and the icons
   }
+
   
   if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
   {
-    Serial.println("Left Button");
-
-    screenTimeoutMin = minute(now()) + 1;
-    screenTimeoutSec = second(now());
-    
     if(lightBarState == 0) 
     {
       Serial.println("Turn on Light Bar");
@@ -172,13 +148,14 @@ void loop()
       digitalWrite(lightBarPin, LOW);
       lightBarState = 0;
     }
+
+    screenTimeoutMin = minute(now()) + 1;                // stop the screen from timing out for another minute
+    screenTimeoutSec = second(now());
   }
 
+
   if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
-  {   
-    screenTimeoutMin = minute(now()) + 1;
-    screenTimeoutSec = second(now());
-    
+  {      
     if(!buzzerEnabled) 
     {
       buzzerEnabled = true;
@@ -187,7 +164,11 @@ void loop()
     {
       buzzerEnabled = false;
     }
+
+    screenTimeoutMin = minute(now()) + 1;                // stop the screen from timing out for another minute
+    screenTimeoutSec = second(now());
   }
+
 
   if(right.buttonIsPressed())                            // Pressing the right button opens the menu
   {
@@ -200,6 +181,8 @@ void loop()
     delay(1000);                       
     mainMenu.open(); 
   }
+
+
 
   while(mainMenu.isOpen)                                 // When the menu is open
   {
@@ -215,18 +198,18 @@ void loop()
     {
       int selectedSetting = mainMenu.selectItem();
 
-      if(selectedSetting > 1 && selectedSetting != NULL)
+      if(selectedSetting > 1 && selectedSetting != NULL) // If the selected item has a valid functionID
       {
-        adjustSetting(selectedSetting);
+        adjustSetting(selectedSetting);                  // advance to a screen where that setting can be adjusted
       }
     
-      if(mainMenu.isOpen)
+      if(mainMenu.isOpen)                                // If the menu is still open
       {
-        mainMenu.displayMenu();
+        mainMenu.displayMenu();                          // display the menu
       }
-      else
+      else                                               // if the menu has been closed
       {
-        screenTimeoutMin = minute(now()) + 1;
+        screenTimeoutMin = minute(now()) + 1;            // set the screen to timeout in a minute
         screenTimeoutSec = second(now());      
       }
     }
@@ -236,9 +219,11 @@ void loop()
       mainMenu.moveToNextItem();
       mainMenu.displayMenu();
     }
-
+    
     delay(100);
   }
+
+
   
   if(hour(now()) == nextSyncHour)                        // If the local clock needs to be synced
   {
@@ -246,6 +231,8 @@ void loop()
 
     calcNextSync();                                      // and calculate when the clock will next need to be synced
   }
+
+  
 
   if(hour(now()) >= lightBarOnTime && hour(now()) < lightBarOffTime)    // Turn on the light bar when it is scheduled                    
   {
@@ -257,6 +244,7 @@ void loop()
     digitalWrite(lightBarPin, LOW);
     lightBarState = 0;
   }
+
 
   if(hour(now()) >= buzzerOnTime && hour(now()) < buzzerOffTime)        // Sound the audio alarm when it is scheduled                
   {
@@ -273,6 +261,7 @@ void loop()
     noTone(buzzerPin);
   }
 
+
   if(hour(now()) >= usb1OnTime && hour(now()) < usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
   {
     digitalWrite(usb1Pin, HIGH);                                      
@@ -282,6 +271,7 @@ void loop()
     digitalWrite(usb1Pin, LOW);
   }
 
+
   if(hour(now()) >= usb2OnTime && hour(now()) < usb2OffTime)            // Turn on USB port 2 when it is scheduled                     
   {
     digitalWrite(usb2Pin, HIGH);                                      
@@ -290,6 +280,7 @@ void loop()
   {
     digitalWrite(usb2Pin, LOW);
   }
+
 
   if(hour(now()) >= usb3OnTime && hour(now()) < usb3OffTime)            // Turn on USB port 3 when it is scheduled                     
   {
@@ -736,7 +727,38 @@ void adjustSetting(int functionID)
     delay(100);
   }
 
-  display.clearDisplay();                                       // Clear the Display
+  display.clearDisplay();                                       // Clear the Display when the user exits the screen
+}
+
+//-------------------------------------------- M A N A G E   S C R E E N   T I M E O U T --------------------------------------------
+
+void manageScreenTimeout()
+{
+  if(hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd)                     // At night (22:00-07:00 by default)
+  {
+    if(minute(now()) == screenTimeoutMin && second(now()) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
+    {     
+      screenIsOn = false;                                                                     // set the screen to turn off
+    }
+    while(!screenIsOn)                                                                        // while the screen is set to be off
+    {
+      display.clearDisplay();                                                                 // make the screen blank                        
+      display.display();
+      
+      if(left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed())       // and wait for any of the buttons to be pressed
+      {
+        screenIsOn = true;                                                                    // when a button is pressed, set the screen to be on
+  
+        screenTimeoutMin = minute(now()) + 1;                                                 // and set it to timeout again in a minute
+        screenTimeoutSec = second(now());
+      }
+      delay(100);
+    }
+  }
+  else                                                                                        // In the day                          
+  {
+    screenIsOn = true;                                                                        // the screen is always on
+  }
 }
 
 //------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
