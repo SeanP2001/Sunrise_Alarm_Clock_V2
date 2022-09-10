@@ -41,6 +41,12 @@ Button right(buttonsPin, 300, 100);
 #define SCREEN_ADDRESS 0x3c                                                 // See datasheet for Address
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // Instantiate OLED Display
 
+bool screenIsOn = true;                                                     // turns the display on or off
+int screenTimeoutStart = 22;                                                // The screen will be able to timeout from 22:00
+int screenTimeoutEnd = 7;                                                   // to 07:00
+int screenTimeoutSec = 0;                                                   // variable to store the second when the screen will time out 
+int screenTimeoutMin = 0;                                                   // variable to store the minute when the screen will time out 
+
 //------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
 
 const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
@@ -105,33 +111,74 @@ void setup(){
   calcNextSync();                                        // Calculate when the clock will next need to be synced
 
   buildMenu(mainMenu);                                   // build the mainMenu
+
+  screenTimeoutMin = minute(now()) + 1;                  // set the screen to timeout 1 minute after turning on
+  screenTimeoutSec = second(now());                      // (the screen will only timeout at night)
 }
 
 //------------------------------------------------------------- M A I N -------------------------------------------------------------
 
 void loop() 
 {
-  displayTime(now());                                    // Display the time
+  
+  if(hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd)                     // At night (22:00-07:00 by default)
+  {
+    if(minute(now()) == screenTimeoutMin && second(now()) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
+    {     
+      screenIsOn = false;                                                                     // set the screen to turn off
+    }
+    while(!screenIsOn)                                                                        // while the screen is set to be off
+    {
+      display.clearDisplay();                                                                 // make the screen blank                        
+      display.display();
+      
+      if(left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed())       // and wait for any of the buttons to be pressed
+      {
+        screenIsOn = true;                                                                    // when a button is pressed, set the screen to be on
+  
+        screenTimeoutMin = minute(now()) + 1;                                                 // and set it to timeout again in a minute
+        screenTimeoutSec = second(now());
+      }
+      delay(100);
+    }
+  }
+  else                                                                                        // In the day                          
+  {
+    screenIsOn = true;                                                                        // the screen is always on
+  }
 
-  displayIcons();
-
-
+  if(screenIsOn)                                         // if the screen is on
+  {
+    displayTime(now());                                  // Display the time
+    displayIcons();                                      // and the icons
+  }
+  
   if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
   {
+    Serial.println("Left Button");
+
+    screenTimeoutMin = minute(now()) + 1;
+    screenTimeoutSec = second(now());
+    
     if(lightBarState == 0) 
     {
+      Serial.println("Turn on Light Bar");
       digitalWrite(lightBarPin, HIGH);
       lightBarState = 1;
     }
     else
     {
+      Serial.println("Turn off Light Bar");
       digitalWrite(lightBarPin, LOW);
       lightBarState = 0;
     }
   }
 
   if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
-  {
+  {   
+    screenTimeoutMin = minute(now()) + 1;
+    screenTimeoutSec = second(now());
+    
     if(!buzzerEnabled) 
     {
       buzzerEnabled = true;
@@ -176,7 +223,12 @@ void loop()
       if(mainMenu.isOpen)
       {
         mainMenu.displayMenu();
-      }      
+      }
+      else
+      {
+        screenTimeoutMin = minute(now()) + 1;
+        screenTimeoutSec = second(now());      
+      }
     }
 
     if(right.buttonIsPressed())                          // Pressing the right button moves the cursor to the next item  
