@@ -60,8 +60,6 @@ const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWO
 
 long utcOffsetInSeconds = 3600;             // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
 
-char daysOfTheWeek[8][12] = {"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
-
 uint8_t nextSyncHour = 0;                   // Variable to store the next hour when the clock needs to be synced
 uint8_t hrsBetweenSync = 12;                // How often the clock needs to be synced (hours) 
 
@@ -276,7 +274,21 @@ void syncTime()
     timeClient.begin();                             // Connect to the NTP Server
     timeClient.update();                            // Get the time from the NTP Server
 
-    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), timeClient.getDay(),9,2024); // Set the local time
+    String formattedDate = timeClient.getFormattedDate(); // FORMAT 2020-08-14T19:26:35Z
+
+    String yearStr = formattedDate.substring(0, 4);       // Extract year and convert it to an int
+    int year;
+    year = yearStr.toInt();
+      
+    String monthStr = formattedDate.substring(5, 7);      // Extract month and convert it to an int
+    int month;
+    month = monthStr.toInt();
+
+    String dayStr = formattedDate.substring(8, 10);       // Extract day and convert it into an int
+    int day;
+    day = dayStr.toInt();
+
+    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), day, month, year); // Set the local time
   }
   else                                              // If the WiFi has failed to connect
   {
@@ -317,15 +329,15 @@ void displayTime(time_t t)
   switch(weekday(t))                                   // Centre the text
   {
     case 1: display.setCursor(28,5); break;
-    case 2: display.setCursor(22,5); break;
-    case 3: display.setCursor(10,5); break;
-    case 4: display.setCursor(16,5); break;
-    case 5: display.setCursor(28,5); break;
-    case 6: display.setCursor(16,5); break;
-    case 7: display.setCursor(28,5); break;
+    case 2: display.setCursor(28,5); break;
+    case 3: display.setCursor(22,5); break;
+    case 4: display.setCursor(10,5); break;
+    case 5: display.setCursor(16,5); break;
+    case 6: display.setCursor(28,5); break;
+    case 7: display.setCursor(16,5); break;
   }
  
-  display.println(daysOfTheWeek[weekday(t)]); 
+  display.println(dayStr(weekday(t))); 
 
   display.setCursor(16,24);
   
