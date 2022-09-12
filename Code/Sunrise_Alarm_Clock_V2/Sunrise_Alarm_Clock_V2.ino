@@ -56,12 +56,11 @@ uint8_t screenTimeoutMin = 0;                                               // v
 const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
 const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
 
-
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
 long utcOffsetInSeconds = 3600;             // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
 
-char daysOfTheWeek[7][12] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
+char daysOfTheWeek[8][12] = {"", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"};
 
 uint8_t nextSyncHour = 0;                   // Variable to store the next hour when the clock needs to be synced
 uint8_t hrsBetweenSync = 12;                // How often the clock needs to be synced (hours) 
@@ -133,8 +132,8 @@ void setup(){
 //------------------------------------------------------------- M A I N -------------------------------------------------------------
 
 void loop() 
-{
-
+{  
+  
   manageScreenTimeout();                                 // Manage the screen timeout depending on the time of day
 
   if(screenIsOn)                                         // If the screen is on
@@ -148,13 +147,11 @@ void loop()
   {
     if(lightBarState == 0) 
     {
-      Serial.println("Turn on Light Bar");
       digitalWrite(lightBarPin, HIGH);
       lightBarState = 1;
     }
     else
     {
-      Serial.println("Turn off Light Bar");
       digitalWrite(lightBarPin, LOW);
       lightBarState = 0;
     }
@@ -279,7 +276,7 @@ void syncTime()
     timeClient.begin();                             // Connect to the NTP Server
     timeClient.update();                            // Get the time from the NTP Server
 
-    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), (timeClient.getDay() -1),0,0); // Set the local time
+    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), timeClient.getDay(),9,2024); // Set the local time
   }
   else                                              // If the WiFi has failed to connect
   {
@@ -317,18 +314,18 @@ void displayTime(time_t t)
   display.setCursor(0,5);
   display.print("           ");
 
-  switch(day(t))                                   // Centre the text
+  switch(weekday(t))                                   // Centre the text
   {
-    case 0: display.setCursor(28,5); break;
-    case 1: display.setCursor(22,5); break;
-    case 2: display.setCursor(10,5); break;
-    case 3: display.setCursor(16,5); break;
-    case 4: display.setCursor(28,5); break;
-    case 5: display.setCursor(16,5); break;
-    case 6: display.setCursor(28,5); break;
+    case 1: display.setCursor(28,5); break;
+    case 2: display.setCursor(22,5); break;
+    case 3: display.setCursor(10,5); break;
+    case 4: display.setCursor(16,5); break;
+    case 5: display.setCursor(28,5); break;
+    case 6: display.setCursor(16,5); break;
+    case 7: display.setCursor(28,5); break;
   }
-
-  display.println(daysOfTheWeek[day(t)]);           
+ 
+  display.println(daysOfTheWeek[weekday(t)]); 
 
   display.setCursor(16,24);
   
