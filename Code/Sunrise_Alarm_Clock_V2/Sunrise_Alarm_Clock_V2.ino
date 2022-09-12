@@ -122,8 +122,11 @@ void setup(){
 
   buildMenu(mainMenu);                                   // build the mainMenu
 
-  screenTimeoutMin = minute(now()) + 1;                  // set the screen to timeout 1 minute after turning on
-  screenTimeoutSec = second(now());                      // (the screen will only timeout at night)
+  if(itIsNight())                                        // if it is night
+  {
+    screenTimeoutMin = minute(now()) + 1;                // set the screen to timeout 1 minute after turning on
+    screenTimeoutSec = second(now());   
+  }                    
 }
 
 
@@ -844,31 +847,56 @@ void loadSettings()
 
 void manageScreenTimeout()
 {
-  if(hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd)                     // At night (22:00-07:00 by default)
+  if(itIsNight())                                                                             // At night (22:00-07:00 by default)
   {
+    if (hour(now()) >= screenTimeoutStart && minute(now()) == 0 && second(now()) <= 10)       // When it initially turns night
+    {
+      screenIsOn = false;                                                                     // set the screen to turn off
+    }
     if(minute(now()) == screenTimeoutMin && second(now()) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
     {     
       screenIsOn = false;                                                                     // set the screen to turn off
     }
+    
     while(!screenIsOn)                                                                        // while the screen is set to be off
     {
       display.clearDisplay();                                                                 // make the screen blank                        
       display.display();
-      
-      if(left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed())       // and wait for any of the buttons to be pressed
+
+      if(anyButtonIsPressed())                                                                  // if any button is pressed
       {
-        screenIsOn = true;                                                                    // when a button is pressed, set the screen to be on
+        screenIsOn = true;                                                                    // set the screen to be on
   
         screenTimeoutMin = minute(now()) + 1;                                                 // and set it to timeout again in a minute
         screenTimeoutSec = second(now());
       }
+
+      if(!itIsNight())                                                                        // if it is no longer night
+      {
+        screenIsOn = true;                                                                    // set the screen to turn on
+      }
+      
       delay(100);
-    }
+    }   
   }
   else                                                                                        // In the day                          
   {
     screenIsOn = true;                                                                        // the screen is always on
   }
+}
+
+//------------------------------------------------------ I T   I S   N I G H T ------------------------------------------------------
+
+bool itIsNight()
+{
+  return (hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd);               // At night (22:00-07:00 by default)
+}
+
+//-------------------------------------------- A N Y   B U T T O N   I S   P R E S S E D --------------------------------------------
+
+bool anyButtonIsPressed()
+{
+  return (left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed());
 }
 
 //------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
