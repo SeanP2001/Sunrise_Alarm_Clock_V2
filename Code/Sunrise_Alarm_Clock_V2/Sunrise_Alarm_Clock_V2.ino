@@ -242,64 +242,7 @@ void loop()
     calcNextSync();                                      // and calculate when the clock will next need to be synced
   }
 
-  
-
-  if(hour(now()) >= lightBarOnTime && hour(now()) < lightBarOffTime)    // Turn on the light bar when it is scheduled                    
-  {
-    digitalWrite(lightBarPin, HIGH); 
-    lightBarState = 1;                                     
-  }
-  if(hour(now()) == lightBarOffTime && minute(now()) == 0)                
-  {
-    digitalWrite(lightBarPin, LOW);
-    lightBarState = 0;
-  }
-
-
-  if(hour(now()) >= buzzerOnTime && hour(now()) < buzzerOffTime)        // Sound the audio alarm when it is scheduled                
-  {
-    if(buzzerEnabled)                                                   // provided that it is enabled
-    {
-      tone(buzzerPin, 2000);
-      delay(1000);
-      noTone(buzzerPin);
-      delay(1000);                                      
-    }
-  }
-  else
-  {
-    noTone(buzzerPin);
-  }
-
-
-  if(hour(now()) >= usb1OnTime && hour(now()) < usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
-  {
-    digitalWrite(usb1Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb1Pin, LOW);
-  }
-
-
-  if(hour(now()) >= usb2OnTime && hour(now()) < usb2OffTime)            // Turn on USB port 2 when it is scheduled                     
-  {
-    digitalWrite(usb2Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb2Pin, LOW);
-  }
-
-
-  if(hour(now()) >= usb3OnTime && hour(now()) < usb3OffTime)            // Turn on USB port 3 when it is scheduled                     
-  {
-    digitalWrite(usb3Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb3Pin, LOW);
-  }
+  manageOutputs();                                       // Turn on or off the light bar, buzzer or USB ports depending on the time
 
   delay(100);
 }
@@ -450,6 +393,68 @@ void displayIcons()
   }
     
   display.display();
+}
+
+//--------------------------------------------------- M A N A G E   O U T P U T S ---------------------------------------------------
+
+void manageOutputs()
+{
+  if(hour(now()) >= lightBarOnTime && hour(now()) < lightBarOffTime)    // Turn on the light bar when it is scheduled                    
+  {
+    digitalWrite(lightBarPin, HIGH); 
+    lightBarState = 1;                                     
+  }
+  if(hour(now()) == lightBarOffTime && minute(now()) == 0)                
+  {
+    digitalWrite(lightBarPin, LOW);
+    lightBarState = 0;
+  }
+
+
+  if(hour(now()) >= buzzerOnTime && hour(now()) < buzzerOffTime)        // Sound the audio alarm when it is scheduled                
+  {
+    if(buzzerEnabled)                                                   // provided that it is enabled
+    {
+      tone(buzzerPin, 2000);
+      delay(1000);
+      noTone(buzzerPin);
+      delay(1000);                                      
+    }
+  }
+  else
+  {
+    noTone(buzzerPin);
+  }
+
+
+  if(hour(now()) >= usb1OnTime && hour(now()) < usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
+  {
+    digitalWrite(usb1Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb1Pin, LOW);
+  }
+
+
+  if(hour(now()) >= usb2OnTime && hour(now()) < usb2OffTime)            // Turn on USB port 2 when it is scheduled                     
+  {
+    digitalWrite(usb2Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb2Pin, LOW);
+  }
+
+
+  if(hour(now()) >= usb3OnTime && hour(now()) < usb3OffTime)            // Turn on USB port 3 when it is scheduled                     
+  {
+    digitalWrite(usb3Pin, HIGH);                                      
+  }
+  else
+  {
+    digitalWrite(usb3Pin, LOW);
+  }
 }
 
 //--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
@@ -863,7 +868,9 @@ void manageScreenTimeout()
       display.clearDisplay();                                                                 // make the screen blank                        
       display.display();
 
-      if(anyButtonIsPressed())                                                                  // if any button is pressed
+      manageOutputs();                                                                        // Turn on or off the light bar, buzzer or USB ports depending on the time
+
+      if(anyButtonIsPressed())                                                                // if any button is pressed
       {
         screenIsOn = true;                                                                    // set the screen to be on
   
