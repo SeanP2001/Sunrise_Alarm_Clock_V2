@@ -1,5 +1,22 @@
 # Sunrise Alarm Clock V2
 
+## Table of Contents
+
+* [Introduction](#introduction)
+* [Brief](#brief)
+* [Method of Operation](#method-of-operation)
+  + [Setup](#setup)
+  + [Main Screen](#main-screen)
+  + [Menu Layout](#menu-layout)
+* [Circuitry](#circuitry)
+  + [Schematic](#schematic)
+  + [PCB Design](#pcb-design)
+* [Enclosure](#enclosure)
+  + [CAD Enclosure](#cad-enclosure)
+  + [3D Printed Enclosure](#3d-printed-enclosure)
+* [Demonstration](#demonstration)
+* [Further Work](#further-work)
+
 ## Introduction
 
 In my first year of university, I made a sunrise alarm clock for an assignment. Version 1 was a simple project using an Arduino Mega and an LCD keypad shield. [Here](https://github.com/SeanP2001/Arduino_Sunrise_Alarm_Clock) is a link to the repo for the original project. Over the past year and a half, I have developed my skills, so I decided to revisit this project.
