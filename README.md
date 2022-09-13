@@ -42,29 +42,32 @@ Pressing the right button enters the menu (shown below).
 
 The menu has the following layout:
 
-1. Alarm
-   1.1. Light Bar
-    1.1.1. On Time
-    1.1.2. Off Time
-   1.2. Buzzer
-    1.2.1. On Time
-    1.2.2. Off Time
+1. Alarm  
+   
+   1. Light Bar
+      1. On Time
+      2. Off Time
+   2. Buzzer  
+      1. On Time  
+      2. Off Time
 
 2. USB Ports
-   2.1. USB 1
-    2.1.1. On Time
-    2.1.2. Off Time
-   2.2. USB 2
-    2.2.1. On Time
-    2.2.2. Off Time
-   2.3. USB 3
-    2.3.1. On Time
-    2.3.2. Off Time
+   
+   1. USB 1
+      1. On Time
+      2. 2. Off Time
+   2. USB 2
+      1. On Time
+      2. Off Time
+   3. USB 3
+      1. On Time
+      2. Off Time
 
 3. Time
-   3.1. Time Offset (hrs)
-   3.2. Hours Between Syncs
-   3.3. Sync Time Now
+   
+   1. Time Offset (hrs)
+   2. Hours Between Syncs
+   3. Sync Time Now
 
 4. Save
 
