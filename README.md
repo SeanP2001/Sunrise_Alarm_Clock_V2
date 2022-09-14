@@ -126,6 +126,8 @@ The "Save" option saves all of the settings to the EEPROM. This means you will n
 
 ## Demonstration
 
+[<img src="./Images/YouTube_Demo_Screenshot.png" alt="Demo Video" />](https://www.youtube.com/watch?v=e8I5AvzANuw "Demo Video")
+
 ## Further Work
 
 In future, I could;
