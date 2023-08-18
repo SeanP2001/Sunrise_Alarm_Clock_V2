@@ -1,15 +1,12 @@
 
-#ifndef _MENU_ITEM_H_
-#define _MENU_ITEM_H_
+#ifndef MENU_ITEM_H
+#define MENU_ITEM_H
 
-#include <Arduino.h>
-#include <Adafruit_SSD1306.h>
 
-extern Adafruit_SSD1306 display;
-
-enum functionIDs {
+enum FunctionID {
   EXIT, 
   BACK, 
+  SUBMENU,
   LIGHT_BAR_ON_TIME,
   LIGHT_BAR_OFF_TIME,
   BUZZER_ON_TIME,
@@ -23,27 +20,14 @@ enum functionIDs {
   TIME_OFFSET,
   HOURS_BETWEEN_SYNCS,
   SYNC_TIME_NOW,
-  SAVE
+  SAVE,
+  END_MARKER
 };
 
-class MenuItem{
-public:
-  int functionID = 0;
-
-  String itemName = "";
-
-  MenuItem* previousMenu;  // Pointer to Previous Menu
-  MenuItem* subMenu;       // Pointer to first submenu item
-  MenuItem* previousItem;  // Pointer to Previous Item
-  MenuItem* nextItem;      // Pointer to Next Item
-
-  MenuItem(String _itemName, int _functionID, MenuItem* _previousMenu, MenuItem* _previousItem);
-
-  void printItemName();
-
-  void addNewItem(String _itemName, int _functionID);
-
-  void addNewSubMenu();
+struct MenuItem {
+  char itemName[20];
+  FunctionID functionID;
+  MenuItem* subMenu;
 };
 
-#endif // _MENU_ITEM_H_
+#endif // MENU_ITEM_H

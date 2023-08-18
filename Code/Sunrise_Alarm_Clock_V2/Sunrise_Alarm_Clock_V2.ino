@@ -16,8 +16,8 @@
 #include <EEPROM.h>
 
 #include "Button.h"
-#include "Menu.h"
 #include "MenuItem.h"
+#include "Stack.h"
 #include "Icons.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
@@ -58,21 +58,19 @@ const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWO
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
-long utcOffsetInSeconds = 3600;             // BST = (3600 secs) ahead of UTC and GMT= (0 secs) ahead of UTC
+int utcOffset = 1;                          // How many hours ahead or behind of UTC (BST=1 & GMT=0)
 
 uint8_t nextSyncHour = 0;                   // Variable to store the next hour when the clock needs to be synced
 uint8_t hrsBetweenSync = 12;                // How often the clock needs to be synced (hours) 
 
 // Define NTP Client to get time
 WiFiUDP ntpUDP;
-NTPClient timeClient(ntpUDP, "pool.ntp.org", utcOffsetInSeconds);
+NTPClient timeClient(ntpUDP, "pool.ntp.org", 0);
 
 uint8_t ntpConnectionTimeout = 30;          // How many seconds before giving up connecting to the NTP server   
 
 
 //----------------------------------------------- S E T T I N G S   V A R I A B L E S -----------------------------------------------
-
-Menu mainMenu;                                            // Instantiates a menu called mainMenu
 
 uint8_t lightBarOnTime = 0;
 uint8_t lightBarOffTime = 0;
@@ -92,6 +90,118 @@ uint8_t usb3OnTime = 0;
 uint8_t usb3OffTime = 0;
 
 uint8_t address = 0;
+
+bool menuIsOpen = false;
+
+//------------------------------------------------------------- M E N U -------------------------------------------------------------
+
+/*
+  The following code will build this menu:
+
+  - Main Menu
+    ├── Alarm
+    │   ├── Light Bar
+    │   │   ├── On Time
+    │   │   └── Off Time
+    │   └── Buzzer
+    │       ├── On Time
+    │       └── Off Time
+    ├── USB Ports
+    │   ├── USB 1
+    │   │   ├── On Time
+    │   │   └── Off Time
+    │   ├── USB 2
+    │   │   ├── On Time
+    │   │   └── Off Time
+    │   └── USB 3
+    │       ├── On Time
+    │       └── Off Time
+    ├── Time
+    │   ├── Time Offset (hrs)
+    │   ├── Hours Between Syncs
+    │   └── Sync Time Now
+    └── Save
+
+*/
+
+
+MenuItem lightBarMenu[] = {
+  {"Back", BACK, nullptr},
+  {"On Time", LIGHT_BAR_ON_TIME, nullptr},
+  {"Off Time", LIGHT_BAR_OFF_TIME, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem buzzerMenu[] = {
+  {"Back", BACK, nullptr},
+  {"On Time", BUZZER_ON_TIME, nullptr},
+  {"Off Time", BUZZER_OFF_TIME, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem alarmMenu[] = {
+  {"Back", BACK, nullptr},
+  {"Light Bar", SUBMENU, lightBarMenu},
+  {"Buzzer", SUBMENU, buzzerMenu},
+  {"", END_MARKER, nullptr}
+};
+
+
+
+MenuItem usb1Menu[] = {
+  {"Back", BACK, nullptr},
+  {"On Time", USB_1_ON_TIME, nullptr},
+  {"Off Time", USB_1_OFF_TIME, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem usb2Menu[] = {
+  {"Back", BACK, nullptr},
+  {"On Time", USB_2_ON_TIME, nullptr},
+  {"Off Time", USB_2_OFF_TIME, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem usb3Menu[] = {
+  {"Back", BACK, nullptr},
+  {"On Time", USB_3_ON_TIME, nullptr},
+  {"Off Time", USB_3_OFF_TIME, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem usbPortsMenu[] = {
+  {"Back", BACK, nullptr},
+  {"USB 1", SUBMENU, usb1Menu},
+  {"USB 2", SUBMENU, usb2Menu},
+  {"USB 3", SUBMENU, usb3Menu},
+  {"", END_MARKER, nullptr}   
+};
+
+
+
+MenuItem timeMenu[] = {
+  {"Back", BACK, nullptr},
+  {"Time Offset (hrs)", TIME_OFFSET, nullptr},
+  {"Hours Between Syncs", HOURS_BETWEEN_SYNCS, nullptr},
+  {"Sync Time Now", SYNC_TIME_NOW, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+
+
+MenuItem mainMenu[] = {
+  {"Exit", EXIT, nullptr},
+  {"Alarm", SUBMENU, alarmMenu},
+  {"USB Ports", SUBMENU, usbPortsMenu},
+  {"Time", SUBMENU, timeMenu},
+  {"Save", SAVE, nullptr},
+  {"", END_MARKER, nullptr}
+};
+
+MenuItem* currentMenu = mainMenu;                                   // By default the main menu is selected as the current menu
+uint8_t selectedIndex = 0;                                          // By default the first item on the menu is selected with the cursor
+
+Stack parentMenuStack;                                              // A stack containing all of the parent menus (enables back navigation)
 
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
@@ -117,13 +227,11 @@ void setup(){
   syncTime();                                            // Sync the local time to the NTP server
   calcNextSync();                                        // Calculate when the clock will next need to be synced
 
-  buildMenu(mainMenu);                                   // build the mainMenu
-
   if(itIsNight())                                        // if it is night
   {
     screenTimeoutMin = minute(now()) + 1;                // set the screen to timeout 1 minute after turning on
     screenTimeoutSec = second(now());   
-  }                    
+  }                   
 }
 
 
@@ -131,7 +239,6 @@ void setup(){
 
 void loop() 
 {  
-  
   manageScreenTimeout();                                 // Manage the screen timeout depending on the time of day
 
   if(screenIsOn)                                         // If the screen is on
@@ -184,45 +291,101 @@ void loop()
     display.drawRect(0, 0, 128, 64, WHITE);    
     display.display();      
     delay(1000);                       
-    mainMenu.open(); 
+    menuIsOpen = true; 
+    currentMenu = mainMenu;                                     // By default the main menu is selected as the current menu
+    selectedIndex = 0;                                          // By default the first item on the menu is selected with the cursor
+    displayMenu();
   }
 
 
 
-  while(mainMenu.isOpen)                                 // When the menu is open
+  while(menuIsOpen)                                      // When the menu is open
   {
     displayIcons();
     
     if(left.buttonIsPressed())                           // Pressing the left button moves the cursor to the previous item
     {
-      mainMenu.moveToPreviousItem();
-      mainMenu.displayMenu();
+      if(selectedIndex > 0)
+      {
+        selectedIndex--;
+      }
+    
+      displayMenu();
     }
     
     if(middle.buttonIsPressed())                         // Pressing the middle button selects the item highlighted by the cursor
     {
-      int selectedSetting = mainMenu.selectItem();
+      enum FunctionID selectedSetting = currentMenu[selectedIndex].functionID;
 
-      if(selectedSetting > 1 && selectedSetting != NULL) // If the selected item has a valid functionID
+      switch(selectedSetting)
       {
-        adjustSetting(selectedSetting);                  // advance to a screen where that setting can be adjusted
+        case EXIT:
+          menuIsOpen = false;                           // Close the menu
+          screenTimeoutMin = minute(now()) + 1;         // set the screen to timeout in a minute
+          screenTimeoutSec = second(now());    
+          display.clearDisplay();                                
+          display.display();
+          break;
+
+        case BACK:
+          currentMenu = parentMenuStack.peek();                     // Set the current menu to it's parent menu
+          parentMenuStack.pop();                                    // remove the menu from the stack
+          selectedIndex = 0;                                        // Select the first item on the menu
+          break;
+
+        case SUBMENU:
+          parentMenuStack.push(currentMenu);                        // Add the current menu to the stack (so it can be navigated back to)
+          currentMenu = currentMenu[selectedIndex].subMenu;         // Change the current menu to the submenu pointed to by the selected item
+          selectedIndex = 0;                                        // Select the first item on the submenu
+          break;
+
+        case SYNC_TIME_NOW:
+          syncTime();                                               // Sync the local time to the NTP server
+          calcNextSync();                                           // Calculate when the clock will next need to be synced
+          break;
+
+        case SAVE:
+          display.clearDisplay();                                   // Clear the Display
+          display.setTextSize(2);
+          display.setTextColor(WHITE, BLACK);
+          display.setCursor(0,0);
+          display.print("Saving...");
+          display.display();
+          
+          saveSettings();                                           // save the current settings to EEPROM
+          
+          delay(1000);
+          display.clearDisplay();
+          display.setCursor(0,0);
+          display.print("Saved");
+          display.display();
+          delay(1000);
+          
+          display.clearDisplay();
+          display.display();
+          break;
+
+        default:
+          display.clearDisplay();
+          display.display();
+          adjustSetting(selectedSetting);
+          break;
       }
     
-      if(mainMenu.isOpen)                                // If the menu is still open
+      if(menuIsOpen)                                     // If the menu is still open
       {
-        mainMenu.displayMenu();                          // display the menu
-      }
-      else                                               // if the menu has been closed
-      {
-        screenTimeoutMin = minute(now()) + 1;            // set the screen to timeout in a minute
-        screenTimeoutSec = second(now());      
+        displayMenu();                                   // display the menu
       }
     }
 
-    if(right.buttonIsPressed())                          // Pressing the right button moves the cursor to the next item  
+    if(right.buttonIsPressed())                          // Pressing the right button moves the cursor to the next item (if there is one)
     {
-      mainMenu.moveToNextItem();
-      mainMenu.displayMenu();
+      if(currentMenu[selectedIndex + 1].functionID != END_MARKER) 
+      {
+        selectedIndex++;
+      }
+    
+      displayMenu();
     }
     
     delay(100);
@@ -250,6 +413,8 @@ void syncTime()
   WiFi.begin(ssid, password);                    
 
   display.clearDisplay();                           // Clear the Display
+  display.setTextSize(2);
+  display.setTextColor(WHITE, BLACK);
   display.setCursor(0,0);
   display.println("Connecting");                    // Show that the device is connecting to the WiFi
   display.display();
@@ -288,7 +453,7 @@ void syncTime()
     int day;
     day = dayStr.toInt();
 
-    setTime(timeClient.getHours(), timeClient.getMinutes(), timeClient.getSeconds(), day, month, year); // Set the local time
+    setTime(timeClient.getHours() + utcOffset, timeClient.getMinutes(), timeClient.getSeconds(), day, month, year); // Set the local time
   }
   else                                              // If the WiFi has failed to connect
   {
@@ -366,10 +531,37 @@ void displayTime(time_t t)
   display.display();
 }
 
+//----------------------------------------------------- D I S P L A Y   M E N U -----------------------------------------------------
+void displayMenu()
+{
+  display.clearDisplay(); 
+  display.display();
+  display.setTextSize(1);
+  display.setTextColor(WHITE);
+
+  if (selectedIndex > 0)                                                    // if there is an menu item before the one currently selected
+  {
+    display.setCursor(12,3);                       
+    display.print(currentMenu[selectedIndex-1].itemName);                   // print it above the current item in the menu
+  }
+
+  display.setCursor(0,19);
+  display.print(">");                                                       // print the cursor
+
+  display.setCursor(12,19);
+  display.print(currentMenu[selectedIndex].itemName);                       // print the current menu item
+
+  if (currentMenu[selectedIndex + 1].functionID != END_MARKER)              // if there is an menu item after the one currently selected
+  {
+    display.setCursor(12,35);                       
+    display.print(currentMenu[selectedIndex+1].itemName);                   // print it below the current item in the menu
+  }
+}
+
 //---------------------------------------------------- D I S P L A Y   I C O N S ----------------------------------------------------
 void displayIcons()
 {
-  if(mainMenu.isOpen)
+  if(menuIsOpen)
   {
     display.drawBitmap(2, 48, upArrowIcon, 16, 16, WHITE);
     display.drawBitmap(110, 48, downArrowIcon, 16, 16, WHITE);
@@ -468,7 +660,7 @@ void manageOutputs()
 
 //--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
 
-void adjustSetting(int functionID)
+void adjustSetting(FunctionID functionID)
 {
   delay(500);
   
@@ -706,18 +898,18 @@ void adjustSetting(int functionID)
         break;
         
       case TIME_OFFSET:
-        display.print(utcOffsetInSeconds/3600);                 // print the number of hours offset from UTC
+        display.print(utcOffset);                 // print the number of hours offset from UTC
         display.print(" Hours");
 
-        if(left.buttonIsPressed() && hrsBetweenSync > -12)      // press the left button to decrement the offset time (down to -12)
+        if(left.buttonIsPressed() && utcOffset > -12)           // press the left button to decrement the offset time (down to -12)
         {
-          utcOffsetInSeconds = utcOffsetInSeconds - 3600; 
+          utcOffset--;
           display.setCursor(0,16);
           display.print("           ");
         } 
-        if(right.buttonIsPressed() && hrsBetweenSync < 12)      // press the right button to increment the offset time (up to +12)
+        if(right.buttonIsPressed() && utcOffset < 12)           // press the right button to increment the offset time (up to +12)
         {
-          utcOffsetInSeconds = utcOffsetInSeconds + 3600; 
+          utcOffset++;
           display.setCursor(0,16);
           display.print("           ");
         }
@@ -740,28 +932,6 @@ void adjustSetting(int functionID)
           display.print("           ");
         }               
         break;  
-             
-      case SYNC_TIME_NOW:
-        syncTime();                                             // Sync the local time to the NTP server
-        calcNextSync();                                         // Calculate when the clock will next need to be synced
-        return;
-
-      case SAVE:
-        display.print("Saving...");
-        display.display();
-        
-        saveSettings();                                         // save the current settings to EEPROM
-        
-        delay(1000);
-        display.clearDisplay();
-        display.setCursor(0,16);
-        display.print("Saved");
-        display.display();
-        delay(1000);
-        
-        display.clearDisplay();
-        display.display();
-        return;
     }
     
     display.display();
@@ -807,9 +977,9 @@ void saveSettings()
   EEPROM.put(address, usb3OffTime);
 
   address = address + sizeof(usb3OffTime);
-  EEPROM.put(address, utcOffsetInSeconds);
+  EEPROM.put(address, utcOffset);
 
-  address = address + sizeof(utcOffsetInSeconds);
+  address = address + sizeof(utcOffset);
   EEPROM.put(address, hrsBetweenSync);
 
   EEPROM.commit();
@@ -851,9 +1021,9 @@ void loadSettings()
   EEPROM.get(address, usb3OffTime);
 
   address = address + sizeof(usb3OffTime);
-  EEPROM.get(address, utcOffsetInSeconds);
+  EEPROM.get(address, utcOffset);
 
-  address = address + sizeof(utcOffsetInSeconds);
+  address = address + sizeof(utcOffset);
   EEPROM.get(address, hrsBetweenSync);
 }
 
@@ -913,138 +1083,4 @@ bool itIsNight()
 bool anyButtonIsPressed()
 {
   return (left.buttonIsPressed() || middle.buttonIsPressed() || right.buttonIsPressed());
-}
-
-//------------------------------------------------------- B U I L D   M E N U -------------------------------------------------------
-/*
-  The following function will build this menu:
-
-  1. Alarm
-    1.1. Light Bar
-      1.1.1. On Time
-      1.1.2. Off Time
-    1.2. Buzzer
-      1.2.1. On Time
-      1.2.2. Off Time
-    
-  2. USB Ports
-    2.1. USB 1
-      2.1.1. On Time
-      2.1.2. Off Time
-    2.2. USB 2
-      2.2.1. On Time
-      2.2.2. Off Time
-    2.3. USB 3
-      2.3.1. On Time
-      2.3.2. Off Time
-
-  3. Time
-    3.1. Time Offset (hrs)
-    3.2. Hours Between Syncs
-    3.3. Sync Time Now
-*/
-
-
-
-void buildMenu(Menu menu)
-{
-  MenuItem* currentItem = menu.firstItem;                               // Create a pointer which points to the first item on the menu,
-
-  currentItem->addNewItem("Alarm", NULL);                               // and add the next item with the name "Alarm" (This will link to a sub-menu so the functionID is NULL).
-  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Alarm",
-  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Alarm" item,
-  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu.
-
-  currentItem->addNewItem("Light Bar", NULL);                           // In the new sub-menu, add an item with the name "Light Bar" (Again this will link to a sub-menu so the functionID is NULL).
-  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Light Bar"
-  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Light Bar" item,
-  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu. 
-
-  currentItem->addNewItem("On Time", LIGHT_BAR_ON_TIME);                // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
-  currentItem = currentItem->nextItem;                                  // Point to the newly created item "On Time".
-
-  currentItem->addNewItem("Off Time", LIGHT_BAR_OFF_TIME);              // Add a new item with the name "Off Time" (see "MenuItem.h" for functionID enum).
-
-  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Light Bar" item).
-
-  currentItem->addNewItem("Buzzer", NULL);                              // Add an item with the name "Buzzer" (Again this will link to a sub-menu so the functionID is NULL).
-  currentItem = currentItem->nextItem;                                  // Point to the newly created item "Buzzer",
-  currentItem->addNewSubMenu();                                         // add a sub-menu to the "Buzzer" item,
-  currentItem = currentItem->subMenu;                                   // and point to the new sub-menu.
- 
-  currentItem->addNewItem("On Time", BUZZER_ON_TIME);                   // In the new sub-menu, add an item with the name "On Time" (see "MenuItem.h" for functionID enum).
-  currentItem = currentItem->nextItem;                                  // Point to the newly created item "On Time"
-
-  currentItem->addNewItem("Off Time", BUZZER_OFF_TIME);                 // Add a new item with the name "Off Time" (see "MenuItem.h" for functionID enum).
-
-  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Buzzer" item).
-
-  currentItem = currentItem->previousMenu;                              // Point back to the previous menu (now pointing at the "Alarm" item).
-
-  currentItem->addNewItem("USB Ports", NULL);
-  currentItem = currentItem->nextItem;
-  currentItem->addNewSubMenu();
-  currentItem = currentItem->subMenu;
-
-  currentItem->addNewItem("USB 1", NULL);
-  currentItem = currentItem->nextItem;
-  currentItem->addNewSubMenu();
-  currentItem = currentItem->subMenu;
-
-  currentItem->addNewItem("On Time", USB_1_ON_TIME);
-  
-  currentItem = currentItem->nextItem;
-  
-  currentItem->addNewItem("Off Time", USB_1_OFF_TIME);
-
-  currentItem = currentItem->previousMenu;
-
-  currentItem->addNewItem("USB 2", NULL);
-  currentItem = currentItem->nextItem;
-  currentItem->addNewSubMenu();
-  currentItem = currentItem->subMenu;
-
-  currentItem->addNewItem("On Time", USB_2_ON_TIME);
-  
-  currentItem = currentItem->nextItem;
-  
-  currentItem->addNewItem("Off Time", USB_2_OFF_TIME);
-
-  currentItem = currentItem->previousMenu;
-
-  currentItem->addNewItem("USB 3", NULL);
-  currentItem = currentItem->nextItem;
-  currentItem->addNewSubMenu();
-  currentItem = currentItem->subMenu;
-
-  currentItem->addNewItem("On Time", USB_3_ON_TIME);
-  
-  currentItem = currentItem->nextItem;
-  
-  currentItem->addNewItem("Off Time", USB_3_OFF_TIME);
-
-  currentItem = currentItem->previousMenu;
-
-  currentItem = currentItem->previousMenu;
-
-  currentItem->addNewItem("Time", NULL);
-  currentItem = currentItem->nextItem;
-  currentItem->addNewSubMenu();
-  currentItem = currentItem->subMenu;
-
-  currentItem->addNewItem("Time Offset (hrs)", TIME_OFFSET);
-
-  currentItem = currentItem->nextItem;
-
-  currentItem->addNewItem("Hours Between Syncs", HOURS_BETWEEN_SYNCS);
-
-  currentItem = currentItem->nextItem;
-
-  currentItem->addNewItem("Sync Time Now", SYNC_TIME_NOW);
-
-  currentItem = currentItem->previousMenu;
-
-  currentItem->addNewItem("Save Settings", SAVE);
-
-  free(currentItem);                                                    // Delete the currentItem pointer (no longer needed).
 }

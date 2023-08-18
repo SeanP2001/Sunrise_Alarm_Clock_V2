@@ -59,34 +59,31 @@ Pressing the right button enters the menu (shown below).
 
 The menu has the following layout:
 
-1. Alarm    
-   
-   1. Light Bar
-      1. On Time
-      2. Off Time
-   2. Buzzer  
-      1. On Time  
-      2. Off Time
-
-2. USB Ports 
-   
-   1. USB 1
-      1. On Time
-      2. Off Time
-   2. USB 2
-      1. On Time
-      2. Off Time
-   3. USB 3
-      1. On Time
-      2. Off Time
-
-3. Time   
-   
-   1. Time Offset (hrs)
-   2. Hours Between Syncs
-   3. Sync Time Now
-
-4. Save
+```
+Main Menu
+├── Alarm
+│   ├── Light Bar
+│   │   ├── On Time
+│   │   └── Off Time
+│   └── Buzzer
+│       ├── On Time
+│       └── Off Time
+├── USB Ports
+│   ├── USB 1
+│   │   ├── On Time
+│   │   └── Off Time
+│   ├── USB 2
+│   │   ├── On Time
+│   │   └── Off Time
+│   └── USB 3
+│       ├── On Time
+│       └── Off Time
+├── Time
+│   ├── Time Offset (hrs)
+│   ├── Hours Between Syncs
+│   └── Sync Time Now
+└── Save
+```
 
 The "Alarm" settings allow you to alter when the light bar and buzzer automatically turn on and off. The "USB Ports" settings adjust when each port turns on and off.
 
