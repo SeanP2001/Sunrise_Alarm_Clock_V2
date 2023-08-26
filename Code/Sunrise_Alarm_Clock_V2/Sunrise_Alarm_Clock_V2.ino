@@ -13,13 +13,13 @@
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
-#include <EEPROM.h>
-
 #include "Button.h"
 #include "SettingsManager.h"
 #include "DisplayManager.h"
 #include "MenuItem.h"
+#include "Menu.h"
 #include "Stack.h"
+#include "Device.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
@@ -30,11 +30,18 @@
 #define usb2Pin D7
 #define usb3Pin D8
 
+//---------------------------------------------------------- B U T T O N S ----------------------------------------------------------
                      //***** Button obj(Pin, AnalogValue, Tolerance) ******//
 Button left(buttonsPin, 700, 100);          
 Button middle(buttonsPin, 500, 100);
 Button right(buttonsPin, 300, 100);
 
+//---------------------------------------------------------- D E V I C E S ----------------------------------------------------------
+
+Device lightBar(lightBarPin);
+Device usb1(usb1Pin);
+Device usb2(usb2Pin);
+Device usb3(usb3Pin);
 
 //------------------------------------------------ D I S P L A Y   V A R I A B L E S ------------------------------------------------  
 
@@ -92,113 +99,9 @@ Settings currentSettings = {
     .hrsBetweenSync = 12          // How often the clock needs to be synced (hours)
 };
 
-bool lightBarState = 0;
 bool buzzerEnabled = true;
 
 //------------------------------------------------------------- M E N U -------------------------------------------------------------
-
-/*
-  The following code will build this menu:
-
-  - Main Menu
-    ├── Alarm
-    │   ├── Light Bar
-    │   │   ├── On Time
-    │   │   └── Off Time
-    │   └── Buzzer
-    │       ├── On Time
-    │       └── Off Time
-    ├── USB Ports
-    │   ├── USB 1
-    │   │   ├── On Time
-    │   │   └── Off Time
-    │   ├── USB 2
-    │   │   ├── On Time
-    │   │   └── Off Time
-    │   └── USB 3
-    │       ├── On Time
-    │       └── Off Time
-    ├── Time
-    │   ├── Time Offset (hrs)
-    │   ├── Hours Between Syncs
-    │   └── Sync Time Now
-    └── Save
-
-*/
-
-
-MenuItem lightBarMenu[] = {
-  {"Back", BACK, nullptr},
-  {"On Time", LIGHT_BAR_ON_TIME, nullptr},
-  {"Off Time", LIGHT_BAR_OFF_TIME, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-MenuItem buzzerMenu[] = {
-  {"Back", BACK, nullptr},
-  {"On Time", BUZZER_ON_TIME, nullptr},
-  {"Off Time", BUZZER_OFF_TIME, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-MenuItem alarmMenu[] = {
-  {"Back", BACK, nullptr},
-  {"Light Bar", SUBMENU, lightBarMenu},
-  {"Buzzer", SUBMENU, buzzerMenu},
-  {"", END_MARKER, nullptr}
-};
-
-
-
-MenuItem usb1Menu[] = {
-  {"Back", BACK, nullptr},
-  {"On Time", USB_1_ON_TIME, nullptr},
-  {"Off Time", USB_1_OFF_TIME, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-MenuItem usb2Menu[] = {
-  {"Back", BACK, nullptr},
-  {"On Time", USB_2_ON_TIME, nullptr},
-  {"Off Time", USB_2_OFF_TIME, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-MenuItem usb3Menu[] = {
-  {"Back", BACK, nullptr},
-  {"On Time", USB_3_ON_TIME, nullptr},
-  {"Off Time", USB_3_OFF_TIME, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-MenuItem usbPortsMenu[] = {
-  {"Back", BACK, nullptr},
-  {"USB 1", SUBMENU, usb1Menu},
-  {"USB 2", SUBMENU, usb2Menu},
-  {"USB 3", SUBMENU, usb3Menu},
-  {"", END_MARKER, nullptr}   
-};
-
-
-
-MenuItem timeMenu[] = {
-  {"Back", BACK, nullptr},
-  {"Time Offset (hrs)", TIME_OFFSET, nullptr},
-  {"Hours Between Syncs", HOURS_BETWEEN_SYNCS, nullptr},
-  {"Sync Time Now", SYNC_TIME_NOW, nullptr},
-  {"", END_MARKER, nullptr}
-};
-
-
-
-MenuItem mainMenu[] = {
-  {"Exit", EXIT, nullptr},
-  {"Alarm", SUBMENU, alarmMenu},
-  {"USB Ports", SUBMENU, usbPortsMenu},
-  {"Time", SUBMENU, timeMenu},
-  {"Save", SAVE, nullptr},
-  {"", END_MARKER, nullptr}
-};
 
 MenuItem* currentMenu = mainMenu;                                   // By default the main menu is selected as the current menu
 uint8_t selectedIndex = 0;                                          // By default the first item on the menu is selected with the cursor
@@ -215,15 +118,12 @@ void setup()
 
   EEPROM.begin(512);
 
-  loadSettings(currentSettings);                                        // Load settings from EEPROM
+  loadSettings(currentSettings);                         // Load settings from EEPROM
+  updateDevices(currentSettings);                        // Update all the device objects to reflect the current settings
 
-  pinMode(lightBarPin, OUTPUT);
   pinMode(buzzerPin, OUTPUT);
-  pinMode(usb1Pin, OUTPUT);
-  pinMode(usb2Pin, OUTPUT);
-  pinMode(usb3Pin, OUTPUT);
 
-  displayInit();
+  displayInit();                                         // Initialise the Display
   
   syncTime();                                            // Sync the local time to the NTP server
   calcNextSync();                                        // Calculate when the clock will next need to be synced
@@ -244,23 +144,14 @@ void loop()
 
   if(screenIsOn)                                         // If the screen is on
   {
-    displayTime(now());                                      // display the time
-    displayIcons(menuIsOpen, lightBarState, buzzerEnabled);  // and the icons
+    displayTime(now());                                        // display the time
+    displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);  // and the icons
   }
 
   
   if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
   {
-    if(lightBarState == 0) 
-    {
-      digitalWrite(lightBarPin, HIGH);
-      lightBarState = 1;
-    }
-    else
-    {
-      digitalWrite(lightBarPin, LOW);
-      lightBarState = 0;
-    }
+    lightBar.toggle();
 
     screenTimeoutMin = minute(now()) + 1;                // stop the screen from timing out for another minute
     screenTimeoutSec = second(now());
@@ -297,7 +188,7 @@ void loop()
 
   while(menuIsOpen)                                      // When the menu is open
   {
-    displayIcons(menuIsOpen, lightBarState, buzzerEnabled);
+    displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);
     
     if(left.buttonIsPressed())                           // Pressing the left button moves the cursor to the previous item
     {
@@ -477,17 +368,8 @@ void calcNextSync()
 
 void manageOutputs()
 {
-  if(hour(now()) >= currentSettings.lightBarOnTime && hour(now()) < currentSettings.lightBarOffTime)    // Turn on the light bar when it is scheduled                    
-  {
-    digitalWrite(lightBarPin, HIGH); 
-    lightBarState = 1;                                     
-  }
-  if(hour(now()) == currentSettings.lightBarOffTime && minute(now()) == 0)                
-  {
-    digitalWrite(lightBarPin, LOW);
-    lightBarState = 0;
-  }
-
+  lightBar.manageOutput(now());    // Turn on the light bar when it is scheduled                    
+  
 
   if(hour(now()) >= currentSettings.buzzerOnTime && hour(now()) < currentSettings.buzzerOffTime)        // Sound the audio alarm when it is scheduled                
   {
@@ -505,34 +387,11 @@ void manageOutputs()
   }
 
 
-  if(hour(now()) >= currentSettings.usb1OnTime && hour(now()) < currentSettings.usb1OffTime)            // Turn on USB port 1 when it is scheduled                     
-  {
-    digitalWrite(usb1Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb1Pin, LOW);
-  }
+  usb1.manageOutput(now());             // Turn on USB port 1 when it is scheduled                     
 
+  usb2.manageOutput(now());             // Turn on USB port 2 when it is scheduled                     
 
-  if(hour(now()) >= currentSettings.usb2OnTime && hour(now()) < currentSettings.usb2OffTime)            // Turn on USB port 2 when it is scheduled                     
-  {
-    digitalWrite(usb2Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb2Pin, LOW);
-  }
-
-
-  if(hour(now()) >= currentSettings.usb3OnTime && hour(now()) < currentSettings.usb3OffTime)            // Turn on USB port 3 when it is scheduled                     
-  {
-    digitalWrite(usb3Pin, HIGH);                                      
-  }
-  else
-  {
-    digitalWrite(usb3Pin, LOW);
-  }
+  usb3.manageOutput(now());             // Turn on USB port 3 when it is scheduled                     
 }
 
 //--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
@@ -609,6 +468,8 @@ void adjustSetting(FunctionID functionID, Settings &currentSettings)
           }
           break;
       }
+
+      updateDevices(currentSettings);         // Update all the device objects to reflect the current settings
     }
 
     if (right.buttonIsPressed()) 
@@ -675,6 +536,7 @@ void adjustSetting(FunctionID functionID, Settings &currentSettings)
           }
           break;
       }
+      updateDevices(currentSettings);           // Update all the device objects to reflect the current settings
     }
 
     delay(100);
@@ -727,6 +589,23 @@ void manageScreenTimeout()
   {
     screenIsOn = true;                                                                        // the screen is always on
   }
+}
+
+
+//--------------------------------------------------- U P D A T E   D E V I C E S ---------------------------------------------------
+void updateDevices(const Settings &settings)
+{
+  lightBar.setOnTime(settings.lightBarOnTime);          // Set the on time of the device based on the setting
+  lightBar.setOffTime(settings.lightBarOffTime);
+
+  usb1.setOnTime(settings.usb1OnTime);
+  usb1.setOffTime(settings.usb1OffTime);
+
+  usb2.setOnTime(settings.usb2OnTime);
+  usb2.setOffTime(settings.usb2OffTime);
+
+  usb3.setOnTime(settings.usb3OnTime);
+  usb3.setOffTime(settings.usb3OffTime);
 }
 
 //------------------------------------------------------ I T   I S   N I G H T ------------------------------------------------------
