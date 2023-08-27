@@ -52,13 +52,11 @@ Device usb3(usb3Pin);
 const uint8_t SCREEN_ADDRESS = 0x3C;                                        // See datasheet for Address
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // Instantiate OLED Display
 
-bool screenIsOn = true;                                                     // turns the display on or off
-
 uint8_t screenTimeoutStart = 22;                                            // The screen will be able to timeout from 22:00
 uint8_t screenTimeoutEnd = 7;                                               // to 07:00
+uint8_t inactivityTimeout = 1;                                              // The duration of inactivity (in minutes) before the screen goes blank
 
-uint8_t screenTimeoutSec = 0;                                               // variable to store the second when the screen will time out 
-uint8_t screenTimeoutMin = 0;                                               // variable to store the minute when the screen will time out 
+bool screenIsOn = true;                                                     // turns the display on or off
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 
@@ -104,6 +102,8 @@ Stack parentMenuStack;                                              // A stack c
 
 bool menuIsOpen = false;
 
+enum Direction{LEFT, RIGHT};
+
 //------------------------------------------------------------ S E T U P ------------------------------------------------------------
 
 void setup()
@@ -120,12 +120,11 @@ void setup()
   displayInit();                                         // Initialise the Display
   
   syncTime();                                            // Sync the local time to the NTP server
-  calcNextSync();                                        // Calculate when the clock will next need to be synced
+  calcNextSync(now(), currentSettings);                  // Calculate when the clock will next need to be synced
 
-  if(itIsNight())                                        // if it is night
+  if(itIsNight(now()))                                   // if it is night
   {
-    screenTimeoutMin = minute(now()) + 1;                // set the screen to timeout 1 minute after turning on
-    screenTimeoutSec = second(now());   
+    resetScreenTimeout(now());                           // set the screen to timeout in 1 minute (default)
   }                   
 }
 
@@ -134,149 +133,179 @@ void setup()
 
 void loop() 
 {  
-  manageScreenTimeout();                                 // Manage the screen timeout depending on the time of day
+  manageScreenTimeout(now());                                 // Manage the screen timeout depending on the time of day
+  manageOutputs(now());                                       // Turn on or off the light bar, buzzer or USB ports depending on the time
 
   if(screenIsOn)                                         // If the screen is on
   {
     displayTime(now());                                        // display the time
     displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);  // and the icons
-  }
 
-  
-  if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
-  {
-    lightBar.toggle();
-
-    screenTimeoutMin = minute(now()) + 1;                // stop the screen from timing out for another minute
-    screenTimeoutSec = second(now());
-  }
-
-
-  if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
-  {      
-    if(!buzzerEnabled) 
+    if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
     {
-      buzzerEnabled = true;
-    }
-    else
-    {
-      buzzerEnabled = false;
+      lightBar.toggle();
+      resetScreenTimeout(now());
     }
 
-    screenTimeoutMin = minute(now()) + 1;                // stop the screen from timing out for another minute
-    screenTimeoutSec = second(now());
+    if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
+    {      
+      buzzerEnabled = !buzzerEnabled;
+      resetScreenTimeout(now());
+    }
+
+    if(right.buttonIsPressed())                            // Pressing the right button opens the menu
+    {
+      openMenu();
+    }
   }
-
-
-  if(right.buttonIsPressed())                            // Pressing the right button opens the menu
+  else
   {
-    displayMenuSplashscreen();   
-    delay(1000);                       
-    menuIsOpen = true; 
-    currentMenu = mainMenu;                                     // By default the main menu is selected as the current menu
-    selectedIndex = 0;                                          // By default the first item on the menu is selected with the cursor
-    displayMenu(currentMenu, selectedIndex);
+    displayBlankScreen();                                                           // make the screen blank 
   }
 
 
 
-  while(menuIsOpen)                                      // When the menu is open
+  while(menuIsOpen)                                           // When the menu is open
   {
     displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);
     
-    if(left.buttonIsPressed())                           // Pressing the left button moves the cursor to the previous item
+    if(left.buttonIsPressed())                                // Pressing the left button moves the cursor to the previous item
     {
-      if(selectedIndex > 0)
-      {
-        selectedIndex--;
-      }
-    
-      displayMenu(currentMenu, selectedIndex);
+      navigateMenu(LEFT);
     }
     
-    if(middle.buttonIsPressed())                         // Pressing the middle button selects the item highlighted by the cursor
+    if(middle.buttonIsPressed())                              // Pressing the middle button selects the item highlighted by the cursor
     {
-      enum FunctionID selectedSetting = currentMenu[selectedIndex].functionID;
-
-      switch(selectedSetting)
-      {
-        case EXIT:
-          menuIsOpen = false;                           // Close the menu
-          screenTimeoutMin = minute(now()) + 1;         // set the screen to timeout in a minute
-          screenTimeoutSec = second(now());    
-          display.clearDisplay();                                
-          display.display();
-          break;
-
-        case BACK:
-          currentMenu = parentMenuStack.peek();                     // Set the current menu to it's parent menu
-          parentMenuStack.pop();                                    // remove the menu from the stack
-          selectedIndex = 0;                                        // Select the first item on the menu
-          break;
-
-        case SUBMENU:
-          parentMenuStack.push(currentMenu);                        // Add the current menu to the stack (so it can be navigated back to)
-          currentMenu = currentMenu[selectedIndex].subMenu;         // Change the current menu to the submenu pointed to by the selected item
-          selectedIndex = 0;                                        // Select the first item on the submenu
-          break;
-
-        case SYNC_TIME_NOW:
-          syncTime();                                               // Sync the local time to the NTP server
-          calcNextSync();                                           // Calculate when the clock will next need to be synced
-          break;
-
-        case SAVE:
-          displaySavingScreen();
-          
-          saveSettings(currentSettings);                            // save the current settings to EEPROM
-          
-          delay(1000);
-          
-          displaySavedScreen();
-          delay(1000);
-          
-          display.clearDisplay();
-          display.display();
-          break;
-
-        default:
-          display.clearDisplay();
-          display.display();
-          adjustSetting(selectedSetting, currentSettings);
-          break;
-      }
-    
-      if(menuIsOpen)                                     // If the menu is still open
-      {
-        displayMenu(currentMenu, selectedIndex);                                   // display the menu
-      }
+      handleMenuItem();
     }
 
-    if(right.buttonIsPressed())                          // Pressing the right button moves the cursor to the next item (if there is one)
+    if(right.buttonIsPressed())                               // Pressing the right button moves the cursor to the next item (if there is one)
     {
-      if(currentMenu[selectedIndex + 1].functionID != END_MARKER) 
-      {
-        selectedIndex++;
-      }
-    
-      displayMenu(currentMenu, selectedIndex);
+      navigateMenu(RIGHT);
     }
     
     delay(100);
   }
-
 
   
   if(hour(now()) == nextSyncHour)                        // If the local clock needs to be synced
   {
     syncTime();                                          // Sync the local time to the NTP server
 
-    calcNextSync();                                      // and calculate when the clock will next need to be synced
+    nextSyncHour = calcNextSync(now(), currentSettings); // and calculate when the clock will next need to be synced
   }
 
-  manageOutputs();                                       // Turn on or off the light bar, buzzer or USB ports depending on the time
-
   delay(100);
+}
+
+//-------------------------------------------------------- O P E N   M E N U --------------------------------------------------------
+void openMenu()
+{
+  displayMenuSplashscreen();   
+  delay(1000);                       
+  menuIsOpen = true; 
+  currentMenu = mainMenu;                              // By default the main menu is selected as the current menu
+  selectedIndex = 0;                                   // By default the first item on the menu is selected with the cursor
+  displayMenu(currentMenu, selectedIndex);
+}
+//------------------------------------------------- H A N D L E   M E N U   I T E M -------------------------------------------------
+void handleMenuItem()
+{
+  enum FunctionID selectedSetting = currentMenu[selectedIndex].functionID;
+
+  switch(selectedSetting)
+  {
+    case EXIT:
+      closeMenu();
+      break;
+
+    case BACK:
+      goToParentMenu();
+      break;
+
+    case SUBMENU:
+      goToSubMenu();
+      break;
+
+    case SYNC_TIME_NOW:
+      syncTime();                                               // Sync the local time to the NTP server
+      calcNextSync(now(), currentSettings);                     // Calculate when the clock will next need to be synced
+      break;
+
+    case SAVE:
+      saveSettingsAndDisplayMessage();
+      break;
+
+    default:
+      displayBlankScreen();
+      adjustSetting(selectedSetting, currentSettings);
+      break;
+  }
+
+  if(menuIsOpen)                                          // If the menu is still open
+  {
+    displayMenu(currentMenu, selectedIndex);              // display the menu
+  }
+}
+
+
+//---------------------------------------------------- N A V I G A T E   M E N U ----------------------------------------------------
+void navigateMenu(enum Direction direction)
+{
+  if(direction == LEFT)
+  {
+    if(selectedIndex > 0)
+    {
+      selectedIndex--;
+    }
+  
+    displayMenu(currentMenu, selectedIndex);
+  }
+  if(direction == RIGHT)
+  {
+    if(currentMenu[selectedIndex + 1].functionID != END_MARKER) 
+    {
+      selectedIndex++;
+    }
+  
+    displayMenu(currentMenu, selectedIndex);
+  }
+}
+
+//------------------------------------------------------- C L O S E   M E N U -------------------------------------------------------
+void closeMenu()
+{
+  menuIsOpen = false;
+  screenTimeoutMin = minute(now()) + 1;
+  screenTimeoutSec = second(now());
+  displayBlankScreen();
+}
+
+//------------------------------------------------ G O   T O   P A R E N T   M E N U ------------------------------------------------
+void goToParentMenu()
+{
+  currentMenu = parentMenuStack.peek();
+  parentMenuStack.pop();
+  selectedIndex = 0;
+}
+
+//--------------------------------------------------- G O   T O   S U B   M E N U ---------------------------------------------------
+void goToSubMenu()
+{
+  parentMenuStack.push(currentMenu);
+  currentMenu = currentMenu[selectedIndex].subMenu;
+  selectedIndex = 0;
+}
+
+//-------------------------------- S A V E   S E T T I N G S   A N D   D I S P L A Y   M E S S A G E --------------------------------
+void saveSettingsAndDisplayMessage()
+{
+  displaySavingScreen();
+  saveSettings(currentSettings);
+  delay(1000);
+  displaySavedScreen();
+  delay(1000);
+  displayBlankScreen();
 }
 
 //-------------------------------------------------------- S Y N C   T I M E --------------------------------------------------------
@@ -337,8 +366,7 @@ void syncTime()
     delay(2000);
   }
 
-  display.clearDisplay(); 
-  display.display();
+  displayBlankScreen();
     
   WiFi.mode(WIFI_OFF);                              // Turn off the WiFi
 
@@ -346,26 +374,21 @@ void syncTime()
 
 //---------------------------------------------- C A L C U L A T E   N E X T   S Y N C ----------------------------------------------
 
-void calcNextSync()
+uint8_t calcNextSync(time_t t, const Settings &settings)
 {
-  nextSyncHour = hour(now()) + currentSettings.hrsBetweenSync;      // Add to the current hour to find when the clock next needs to sync
-
-  while(nextSyncHour >= 24)                       
-  {
-    nextSyncHour = nextSyncHour - 24;             
-  }
+  return (hour(t) + settings.hrsBetweenSync) % 24;      // Add to the current hour to find when the clock next needs to sync
 }
 
 
 
 //--------------------------------------------------- M A N A G E   O U T P U T S ---------------------------------------------------
 
-void manageOutputs()
+void manageOutputs(time_t t)
 {
-  lightBar.manageOutput(now());    // Turn on the light bar when it is scheduled                    
+  lightBar.manageOutput(t);    // Turn on the light bar when it is scheduled                    
   
 
-  if(hour(now()) >= currentSettings.buzzerOnTime && hour(now()) < currentSettings.buzzerOffTime)        // Sound the audio alarm when it is scheduled                
+  if(hour(t) >= currentSettings.buzzerOnTime && hour(t) < currentSettings.buzzerOffTime)        // Sound the audio alarm when it is scheduled                
   {
     if(buzzerEnabled)                                                   // provided that it is enabled
     {
@@ -381,11 +404,11 @@ void manageOutputs()
   }
 
 
-  usb1.manageOutput(now());             // Turn on USB port 1 when it is scheduled                     
+  usb1.manageOutput(t);             // Turn on USB port 1 when it is scheduled                     
 
-  usb2.manageOutput(now());             // Turn on USB port 2 when it is scheduled                     
+  usb2.manageOutput(t);             // Turn on USB port 2 when it is scheduled                     
 
-  usb3.manageOutput(now());             // Turn on USB port 3 when it is scheduled                     
+  usb3.manageOutput(t);             // Turn on USB port 3 when it is scheduled                     
 }
 
 //--------------------------------------------------- A D J U S T   S E T T I N G ---------------------------------------------------
@@ -536,53 +559,7 @@ void adjustSetting(FunctionID functionID, Settings &currentSettings)
     delay(100);
   }
 
-  display.clearDisplay(); // Clear the Display when the user exits the screen
-}
-
-
-
-//-------------------------------------------- M A N A G E   S C R E E N   T I M E O U T --------------------------------------------
-
-void manageScreenTimeout()
-{
-  if(itIsNight())                                                                             // At night (22:00-07:00 by default)
-  {
-    if (hour(now()) >= screenTimeoutStart && minute(now()) == 0 && second(now()) <= 10)       // When it initially turns night
-    {
-      screenIsOn = false;                                                                     // set the screen to turn off
-    }
-    if(minute(now()) == screenTimeoutMin && second(now()) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
-    {     
-      screenIsOn = false;                                                                     // set the screen to turn off
-    }
-    
-    while(!screenIsOn)                                                                        // while the screen is set to be off
-    {
-      display.clearDisplay();                                                                 // make the screen blank                        
-      display.display();
-
-      manageOutputs();                                                                        // Turn on or off the light bar, buzzer or USB ports depending on the time
-
-      if(anyButtonIsPressed())                                                                // if any button is pressed
-      {
-        screenIsOn = true;                                                                    // set the screen to be on
-  
-        screenTimeoutMin = minute(now()) + 1;                                                 // and set it to timeout again in a minute
-        screenTimeoutSec = second(now());
-      }
-
-      if(!itIsNight())                                                                        // if it is no longer night
-      {
-        screenIsOn = true;                                                                    // set the screen to turn on
-      }
-      
-      delay(100);
-    }   
-  }
-  else                                                                                        // In the day                          
-  {
-    screenIsOn = true;                                                                        // the screen is always on
-  }
+  displayBlankScreen();                         // Clear the Display when the user exits the screen
 }
 
 
@@ -604,9 +581,9 @@ void updateDevices(const Settings &settings)
 
 //------------------------------------------------------ I T   I S   N I G H T ------------------------------------------------------
 
-bool itIsNight()
+bool itIsNight(time_t t)
 {
-  return (hour(now()) >= screenTimeoutStart || hour(now()) < screenTimeoutEnd);               // At night (22:00-07:00 by default)
+  return (hour(t) >= screenTimeoutStart || hour(t) < screenTimeoutEnd);               // At night (22:00-07:00 by default)
 }
 
 //-------------------------------------------- A N Y   B U T T O N   I S   P R E S S E D --------------------------------------------

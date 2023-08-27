@@ -2,6 +2,11 @@
 
 #include "DisplayManager.h"
 
+// extern uint8_t screenTimeoutSec;          // variable to store the second when the screen will time out 
+// extern uint8_t screenTimeoutMin;          // variable to store the minute when the screen will time out 
+
+uint8_t screenTimeoutSec = 0;                                               // variable to store the second when the screen will time out 
+uint8_t screenTimeoutMin = 0;                                               // variable to store the minute when the screen will time out 
 
 
 //----------------------------------------------------- D I S P L A Y   I N I T -----------------------------------------------------
@@ -224,6 +229,14 @@ void displaySetting(const FunctionID functionID, const Settings &settings)
   display.display();
 }
 
+
+//--------------------------------------------- D I S P L A Y   B L A N K   S C R E E N ---------------------------------------------
+void displayBlankScreen()
+{
+  display.clearDisplay();
+  display.display();
+}
+
 //---------------------------------------------------- D I S P L A Y   I C O N S ----------------------------------------------------
 void displayIcons(bool menuState, bool lightBarState, bool buzzerEnabled)
 {
@@ -284,4 +297,48 @@ void displaySavedScreen()
   display.setCursor(0,0);
   display.print("Saved");
   display.display();
+}
+
+
+//--------------------------------------------- R E S E T   S C R E E N   T I M E O U T ---------------------------------------------
+void resetScreenTimeout(time_t t)
+{
+  screenTimeoutMin = minute(t) + inactivityTimeout;                // stop the screen from timing out
+  screenTimeoutSec = second(t);
+}
+
+
+//-------------------------------------------- M A N A G E   S C R E E N   T I M E O U T --------------------------------------------
+
+void manageScreenTimeout(time_t t)
+{
+  if(itIsNight(t))                                                                     // At night (22:00-07:00 by default)
+  {
+    if (hour(t) == screenTimeoutStart && minute(t) == 0 && second(t) <= 10)           // When it initially turns night
+    {
+      screenIsOn = false;                                                             // set the screen to turn off
+    }
+    if(minute(t) == screenTimeoutMin && second(t) == screenTimeoutSec && screenIsOn)  // if the screen is on and due to timeout
+    {     
+      screenIsOn = false;                                                             // set the screen to turn off
+    }
+    
+    if(!screenIsOn)                                                                // while the screen is set to be off
+    {
+      if(anyButtonIsPressed())                                                        // if any button is pressed
+      {
+        screenIsOn = true;                                                            // set the screen to be on                                           
+        resetScreenTimeout(t);                                                        // and set it to timeout again in a minute
+      }
+
+      if(!itIsNight(t))                                                                // if it is no longer night
+      {
+        screenIsOn = true;                                                            // set the screen to turn on
+      }
+    }   
+  }
+  else                                                                                // In the day                          
+  {
+    screenIsOn = true;                                                                // the screen is always on
+  }
 }

@@ -31,9 +31,12 @@ I wanted to design an alarm clock that uses light to wake me up naturally, makin
 
 Before programming the alarm, you must put your Wi-Fi credentials in the "WifiCredentials.h" file.
 
-<p align="center">
-  <img src="./Images/Insert_WiFi_Credentials.png" />
-</p>
+```arduino
+//------------------------ W I F I   C R E D E N T I A L S ------------------------
+
+const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
+const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
+```
 
 When the alarm is first powered on, it will connect to your Wi-Fi to get the current date and time. It will then load any settings from EEPROM before it advances to the main screen (shown below).
 
