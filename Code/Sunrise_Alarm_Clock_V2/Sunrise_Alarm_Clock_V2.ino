@@ -20,6 +20,7 @@
 #include "Menu.h"
 #include "Stack.h"
 #include "Device.h"
+#include "WifiCredentials.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
 
@@ -47,7 +48,6 @@ Device usb3(usb3Pin);
 
 #define SCREEN_WIDTH 128                                                    // OLED display width, in pixels
 #define SCREEN_HEIGHT 64                                                    // OLED display height, in pixels
-
 #define OLED_RESET     -1                                                   // Reset pin # (or -1 if sharing Arduino reset pin)
 const uint8_t SCREEN_ADDRESS = 0x3C;                                        // See datasheet for Address
 Adafruit_SSD1306 display(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET);   // Instantiate OLED Display
@@ -59,12 +59,6 @@ uint8_t screenTimeoutEnd = 7;                                               // t
 
 uint8_t screenTimeoutSec = 0;                                               // variable to store the second when the screen will time out 
 uint8_t screenTimeoutMin = 0;                                               // variable to store the minute when the screen will time out 
-
-
-//------------------------------------------------- W I F I   C R E D E N T I A L S -------------------------------------------------  
-
-const char *ssid     = "YOUR_WIFI_SSID";        // REPLACE WITH YOUR WIFI SSID
-const char *password = "YOUR_WIFI_PASSWORD";    // REPLACE WITH YOUR WIFI PASSWORD
 
 //-------------------------------------------- T I M E   &   D A T E   V A R I A B L E S --------------------------------------------
 

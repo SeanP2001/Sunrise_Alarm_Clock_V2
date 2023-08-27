@@ -29,7 +29,7 @@ I wanted to design an alarm clock that uses light to wake me up naturally, makin
 
 ### Setup
 
-Before programming the alarm, you must put your Wi-Fi credentials in the "Sunrise_Alarm_Clock_V2.ino" file.
+Before programming the alarm, you must put your Wi-Fi credentials in the "WifiCredentials.h" file.
 
 <p align="center">
   <img src="./Images/Insert_WiFi_Credentials.png" />
