@@ -14,12 +14,18 @@
 #include <Adafruit_SSD1306.h>
 
 #include "Button.h"
+
 #include "SettingsManager.h"
 #include "DisplayManager.h"
+
 #include "MenuItem.h"
 #include "Menu.h"
 #include "Stack.h"
-#include "Device.h"
+
+#include "Light.h"
+#include "USB.h"
+#include "Alarm.h"
+
 #include "WifiCredentials.h"
 
 //----------------------------------------------------------- P I N O U T -----------------------------------------------------------
@@ -39,10 +45,12 @@ Button right(buttonsPin, 300, 100);
 
 //---------------------------------------------------------- D E V I C E S ----------------------------------------------------------
 
-Device lightBar(lightBarPin);
-Device usb1(usb1Pin);
-Device usb2(usb2Pin);
-Device usb3(usb3Pin);
+Light lightBar(lightBarPin);
+USB usb1(usb1Pin);
+USB usb2(usb2Pin);
+USB usb3(usb3Pin);
+
+Alarm alarm(buzzerPin);
 
 //------------------------------------------------ D I S P L A Y   V A R I A B L E S ------------------------------------------------  
 
@@ -91,8 +99,6 @@ Settings currentSettings = {
     .hrsBetweenSync = 12          // How often the clock needs to be synced (hours)
 };
 
-bool buzzerEnabled = true;
-
 //------------------------------------------------------------- M E N U -------------------------------------------------------------
 
 MenuItem* currentMenu = mainMenu;                                   // By default the main menu is selected as the current menu
@@ -114,8 +120,6 @@ void setup()
 
   loadSettings(currentSettings);                         // Load settings from EEPROM
   updateDevices(currentSettings);                        // Update all the device objects to reflect the current settings
-
-  pinMode(buzzerPin, OUTPUT);
 
   displayInit();                                         // Initialise the Display
   
@@ -139,7 +143,7 @@ void loop()
   if(screenIsOn)                                         // If the screen is on
   {
     displayTime(now());                                        // display the time
-    displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);  // and the icons
+    displayIcons(menuIsOpen, lightBar.isOn(), alarm.isEnabled());  // and the icons
 
     if(left.buttonIsPressed())                             // Pressing the left button toggles the light bar on or off
     {
@@ -149,7 +153,7 @@ void loop()
 
     if(middle.buttonIsPressed())                           // pressing the middle button enables and disables the buzzer 
     {      
-      buzzerEnabled = !buzzerEnabled;
+      alarm.toggle();
       resetScreenTimeout(now());
     }
 
@@ -167,7 +171,7 @@ void loop()
 
   while(menuIsOpen)                                           // When the menu is open
   {
-    displayIcons(menuIsOpen, lightBar.isOn(), buzzerEnabled);
+    displayIcons(menuIsOpen, lightBar.isOn(), alarm.isEnabled());
     
     if(left.buttonIsPressed())                                // Pressing the left button moves the cursor to the previous item
     {
@@ -385,25 +389,10 @@ uint8_t calcNextSync(time_t t, const Settings &settings)
 
 void manageOutputs(time_t t)
 {
-  lightBar.manageOutput(t);    // Turn on the light bar when it is scheduled                    
+  lightBar.manageOutput(t);         // Turn on the light bar when it is scheduled                    
   
-
-  if(hour(t) >= currentSettings.buzzerOnTime && hour(t) < currentSettings.buzzerOffTime)        // Sound the audio alarm when it is scheduled                
-  {
-    if(buzzerEnabled)                                                   // provided that it is enabled
-    {
-      tone(buzzerPin, 2000);
-      delay(1000);
-      noTone(buzzerPin);
-      delay(1000);                                      
-    }
-  }
-  else
-  {
-    noTone(buzzerPin);
-  }
-
-
+  alarm.manageOutput(t);            // Sound the audio alarm when it is scheduled                
+  
   usb1.manageOutput(t);             // Turn on USB port 1 when it is scheduled                     
 
   usb2.manageOutput(t);             // Turn on USB port 2 when it is scheduled                     
@@ -577,6 +566,9 @@ void updateDevices(const Settings &settings)
 
   usb3.setOnTime(settings.usb3OnTime);
   usb3.setOffTime(settings.usb3OffTime);
+
+  alarm.setOnTime(settings.buzzerOnTime);
+  alarm.setOffTime(settings.buzzerOffTime);
 }
 
 //------------------------------------------------------ I T   I S   N I G H T ------------------------------------------------------
