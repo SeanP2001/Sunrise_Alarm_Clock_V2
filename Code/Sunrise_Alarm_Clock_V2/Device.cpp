@@ -25,7 +25,22 @@ void Device::setOffTime(uint8_t hour)
 //-------------------------------------------------- I T   I S   O N   T I M E --------------------------------------------------
 bool Device::itIsOnTime(time_t t)
 {
-  return ((hour(t) >= onTime) && (hour(t) < offTime));                  
+  if(onTime < offTime)
+  {
+    if((hour(t) >= onTime) && (hour(t) < offTime))          // if the current hour is between the on and off hour
+    {
+      return true;
+    }
+  }
+  if(onTime > offTime)
+  {
+    if((hour(t) >= onTime && hour(t) <= 23) || (hour(t) >= 0 && hour(t) < offTime))     // if it is after the on time at night or before the off time in the morning
+    {
+      return true;
+    }
+  }
+
+  return false;;                 
 }
 
 //------------------------------------------------- I T   I S   O F F   T I M E -------------------------------------------------
